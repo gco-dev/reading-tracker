@@ -1,24 +1,39 @@
+:root {
+    --cor-fundo: #dfd0b8;
+    --cor-papel: #fcf8f0;
+    --cor-verde: #1f3a32;
+    --cor-verde-hover: #284b41;
+    --cor-madeira: #6b3e26;
+    --cor-vinho: #8b2635;
+    --cor-vinho-hover: #a32c3e;
+    --cor-texto: #2c221e;
+    --cor-borda-suave: #bfa98e;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #dfd0b8; /* Fundo pergaminho mais intenso e quente */
-    color: #2c221e;
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
     margin: 0;
     padding: 20px;
     text-align: center;
 }
 
 header {
-    background-color: #1f3a32; /* Verde-biblioteca clássico */
+    background-color: var(--cor-verde);
     color: #f7f2e7;
     padding: 28px 20px;
     border-radius: 8px;
-    border-bottom: 4px solid #6b3e26; /* Marrom madeira no lugar do amarelo */
+    border-bottom: 4px solid var(--cor-madeira);
     margin-bottom: 25px;
     box-shadow: 0 4px 10px rgba(44, 34, 30, 0.18);
 }
 
-header h1 {
+header h1, h2, .cartao-livro h3 {
     font-family: Georgia, 'Times New Roman', serif;
+}
+
+header h1 {
     margin: 0;
     font-size: 28px;
     letter-spacing: 0.5px;
@@ -32,16 +47,15 @@ header h1 {
 }
 
 h2 {
-    font-family: Georgia, 'Times New Roman', serif;
     color: #3e2723;
 }
 
-/* Estilos do Formulário */
+/* Formulário */
 .adicionar-livro {
-    background-color: #fcf8f0;
+    background-color: var(--cor-papel);
     padding: 22px;
     border-radius: 8px;
-    border: 1px solid #bfa98e;
+    border: 1px solid var(--cor-borda-suave);
     margin-bottom: 20px;
     box-shadow: 0 3px 6px rgba(44, 34, 30, 0.1);
 }
@@ -50,75 +64,71 @@ h2 {
 #form-novo-livro select {
     padding: 10px 12px;
     margin: 5px;
-    border: 1px solid #bfa98e;
+    border: 1px solid var(--cor-borda-suave);
     border-radius: 4px;
     background-color: #fffdf9;
-    color: #2c221e;
+    color: var(--cor-texto);
     font-size: 15px;
 }
 
-/* Ajuste específico da caixa de ano para não cortar o texto */
 #novo-ano {
     width: 145px;
-    -moz-appearance: textfield; /* Remove as setas no Firefox */
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
-/* Remove as setas laterais no Chrome, Edge e Safari */
 #novo-ano::-webkit-outer-spin-button,
 #novo-ano::-webkit-inner-spin-button {
     -webkit-appearance: none;
+    appearance: none;
     margin: 0;
 }
 
 #form-novo-livro input:focus, 
 #form-novo-livro select:focus {
     outline: none;
-    border-color: #1f3a32;
+    border-color: var(--cor-verde);
 }
 
-/* Botão Principal (Salvar Livro) */
-#form-novo-livro button {
-    padding: 10px 22px;
-    margin: 5px;
-    background-color: #1f3a32;
-    color: #f7f2e7;
+/* Estilos base compartilhados pelos botões */
+#form-novo-livro button,
+.btn-remover {
+    color: var(--cor-papel);
     border: none;
     border-radius: 4px;
-    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+#form-novo-livro button {
+    padding: 10px 22px;
+    margin: 5px;
+    background-color: var(--cor-verde);
+    font-size: 15px;
+}
+
 #form-novo-livro button:hover {
-    background-color: #284b41;
-    transform: translateY(-2px); /* Sobe levemente */
+    background-color: var(--cor-verde-hover);
+    transform: translateY(-2px);
     box-shadow: 0 5px 10px rgba(31, 58, 50, 0.3);
 }
 
 #form-novo-livro button:active {
-    transform: translateY(1px) scale(0.98); /* Efeito de clique afundando */
+    transform: translateY(1px) scale(0.98);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Botão Remover (nos cartões dos livros) */
 .btn-remover {
-    background-color: #8b2635;
-    color: #fcf8f0;
-    border: none;
+    background-color: var(--cor-vinho);
     padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
     margin-top: 12px;
     font-size: 13px;
-    font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .btn-remover:hover {
-    background-color: #a32c3e;
+    background-color: var(--cor-vinho-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(139, 38, 53, 0.3);
 }
@@ -128,7 +138,14 @@ h2 {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Organização dos cartões em grade */
+hr {
+    border: 0;
+    height: 1px;
+    background: var(--cor-borda-suave);
+    margin: 30px 0;
+}
+
+/* Grade e Cartões */
 .grid-livros {
     display: flex;
     flex-wrap: wrap;
@@ -137,11 +154,10 @@ h2 {
     margin-top: 20px;
 }
 
-/* Visual individual de cada cartão (contorno fino preto + lombada marrom) */
 .cartao-livro {
-    background-color: #fcf8f0;
-    border: 1px solid #1f1a17; /* Contorno fino preto em cima, direita e baixo */
-    border-left: 6px solid #6b3e26; /* Lombada marrom na esquerda */
+    background-color: var(--cor-papel);
+    border: 1px solid #1f1a17;
+    border-left: 6px solid var(--cor-madeira);
     border-radius: 6px;
     padding: 18px;
     width: 255px;
@@ -156,9 +172,8 @@ h2 {
 }
 
 .cartao-livro h3 {
-    font-family: Georgia, 'Times New Roman', serif;
     margin: 0 0 12px 0;
-    color: #1f3a32;
+    color: var(--cor-verde);
     font-size: 19px;
     border-bottom: 1px solid #dfd3c3;
     padding-bottom: 8px;
@@ -168,4 +183,9 @@ h2 {
     margin: 6px 0;
     color: #4a3b32;
     font-size: 14px;
+}
+
+.mensagem-vazia {
+    color: #5c493e;
+    font-style: italic;
 }
