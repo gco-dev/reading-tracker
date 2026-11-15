@@ -1,9 +1,9 @@
 // js/app.js
 import {
     initializeStore, resetData,
-    getAuthors, getBooks, getReadings,
+    getAuthors, getBooks, getReadings, getReadingsByBookId,
     saveAuthor, saveBook, saveReading,
-    updateReadingStatus, deleteBook
+    updateReadingStatus, deleteReading, deleteBook
 } from './store.js';
 
 import {
@@ -26,16 +26,16 @@ async function refreshUI() {
     await renderBooks();
 }
 
-// Helper to prevent HTML injection when rendering titles/authors
+// Safe DOM-based HTML escaper to prevent XSS without entity copy-paste issues
 function escapeHTML(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = String(str);
     return div.innerHTML;
 }
 
 // =========================================================
-// 2. UI RENDERING
+// 2. MAIN UI RENDERING
 // =========================================================
 async function populateAuthorDropdown() {
     const authors = await getAuthors();
@@ -87,7 +87,7 @@ async function renderBooks() {
             ? (book.publicationYear < 0 ? `${Math.abs(book.publicationYear)} BC` : book.publicationYear)
             : 'Not informed';
 
-        // Match readings linked to this book (uses the most recent reading entry)
+        // Match all readings linked to this book (1 Book : N Readings)
         const bookReadings = readings.filter(r => r.bookId === book.id);
         const latestReading = bookReadings[bookReadings.length - 1];
 
@@ -101,7 +101,7 @@ async function renderBooks() {
                </select>`
             : `<span class="status-badge status-unknown">No Reading</span>`;
 
-        // Render optional Reading details when present
+        // Render latest Reading details when present
         const extraReadingDetails = [];
         if (latestReading?.yearRead) {
             extraReadingDetails.push(`<p><strong>Year Read:</strong> ${latestReading.yearRead}</p>`);
@@ -115,20 +115,96 @@ async function renderBooks() {
 
         return `
             <div class="book-card">
-                ${statusSelectHTML}
-                <h3>${escapeHTML(book.title)}</h3>
-                <p><strong>Author:</strong> ${escapeHTML(authorNames)}</p>
-                <p><strong>Published:</strong> ${yearDisplay}</p>
-                <p><strong>Form:</strong> ${escapeHTML(book.form || 'Not informed')}</p>
-                ${extraReadingDetails.join('')}
-                <button type="button" class="btn-remove" data-book-id="${book.id}">Remove</button>
+                <div>
+                    ${statusSelectHTML}
+                    <h3>${escapeHTML(book.title)}</h3>
+                    <p><strong>Author:</strong> ${escapeHTML(authorNames)}</p>
+                    <p><strong>Published:</strong> ${yearDisplay}</p>
+                    <p><strong>Form:</strong> ${escapeHTML(book.form || 'Not informed')}</p>
+                    ${extraReadingDetails.join('')}
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-readings" data-book-id="${book.id}">
+                        Readings (${bookReadings.length})
+                    </button>
+                    <button type="button" class="btn-remove" data-book-id="${book.id}">Remove</button>
+                </div>
             </div>
         `;
     }).join('');
 }
 
 // =========================================================
-// 3. EVENT LISTENERS (NO INLINE HANDLERS)
+// 3. READING HISTORY MODAL RENDERING (FR-03)
+// =========================================================
+async function openReadingModal(bookId) {
+    const books = await getBooks();
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+
+    const modal = document.getElementById('reading-modal');
+    const modalTitle = document.getElementById('modal-book-title');
+    const modalBookIdInput = document.getElementById('modal-book-id');
+    const modalForm = document.getElementById('form-modal-reading');
+    const modalErrorContainer = document.getElementById('modal-error-messages');
+
+    modalTitle.textContent = `Readings: ${book.title}`;
+    modalBookIdInput.value = book.id;
+    modalForm.reset();
+    modalErrorContainer.innerHTML = '';
+
+    await renderModalReadings(book.id);
+    modal.showModal();
+}
+
+async function renderModalReadings(bookId) {
+    const bookReadings = await getReadingsByBookId(bookId);
+    const historyListEl = document.getElementById('modal-readings-list');
+
+    if (bookReadings.length === 0) {
+        historyListEl.innerHTML = '<p class="empty-message">No readings logged for this book yet.</p>';
+        return;
+    }
+
+    historyListEl.innerHTML = bookReadings.map((reading, index) => {
+        const statusClass = reading.status.toLowerCase().replace(/\s+/g, '-');
+        const details = [];
+
+        if (reading.yearRead) {
+            details.push(`<p><strong>Year Read:</strong> ${reading.yearRead}</p>`);
+        }
+        if (reading.grade !== null && reading.grade !== undefined) {
+            details.push(`<p><strong>Grade:</strong> ${reading.grade}/10</p>`);
+        }
+        if (reading.priority) {
+            details.push(`<p><strong>Priority:</strong> ${escapeHTML(reading.priority)}</p>`);
+        }
+        if (reading.recommendedBy) {
+            details.push(`<p><strong>Recommended by:</strong> ${escapeHTML(reading.recommendedBy)}</p>`);
+        }
+        if (reading.notes) {
+            details.push(`<p><strong>Notes:</strong> ${escapeHTML(reading.notes)}</p>`);
+        }
+
+        return `
+            <div class="reading-history-item">
+                <div class="reading-item-header">
+                    <span>
+                        <strong>#${index + 1}</strong>  
+                        <span class="status-pill status-${statusClass}">${escapeHTML(reading.status)}</span>
+                    </span>
+                    <button type="button" class="btn-delete-reading" data-reading-id="${reading.id}">
+                        Delete
+                    </button>
+                </div>
+                ${details.join('')}
+            </div>
+        `;
+    }).join('');
+}
+
+// =========================================================
+// 4. EVENT LISTENERS (NO INLINE HANDLERS)
 // =========================================================
 function setupEventListeners() {
     const form = document.getElementById('form-new-book');
@@ -137,7 +213,14 @@ function setupEventListeners() {
     const resetBtn = document.getElementById('btn-reset');
     const bookListEl = document.getElementById('book-list');
 
-    // Form submission: validates and saves Author (if new), Book, and Reading separately
+    // Modal elements
+    const modal = document.getElementById('reading-modal');
+    const closeModalBtn = document.getElementById('btn-close-modal');
+    const modalForm = document.getElementById('form-modal-reading');
+    const modalErrorContainer = document.getElementById('modal-error-messages');
+    const modalHistoryList = document.getElementById('modal-readings-list');
+
+    // Main Form: Create Author (if new), Book, and Initial Reading
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         errorContainer.innerHTML = '';
@@ -188,14 +271,12 @@ function setupEventListeners() {
                 priority: priority || null
             };
 
-            // Validate Book and Reading rules (FR-06) before persisting anything
             const allErrors = [
                 ...validateBook(bookDraft),
                 ...validateReading(readingDraft)
             ];
             throwValidationError(allErrors);
 
-            // Persist entities in order
             if (newAuthorToSave) {
                 const savedAuthor = await saveAuthor(newAuthorToSave);
                 bookDraft.authorIds = [savedAuthor.id];
@@ -209,19 +290,11 @@ function setupEventListeners() {
             await refreshUI();
 
         } catch (error) {
-            if (error.status === 400) {
-                error.errors.forEach(err => {
-                    const p = document.createElement('p');
-                    p.textContent = `${err.field}: ${err.message}`;
-                    errorContainer.appendChild(p);
-                });
-            } else {
-                console.error('Unexpected error:', error);
-            }
+            renderErrors(error, errorContainer);
         }
     });
 
-    // Toggle list sorting
+    // Sort Button
     sortBtn.addEventListener('click', () => {
         if (currentSort === 'recent') {
             currentSort = 'title';
@@ -233,7 +306,7 @@ function setupEventListeners() {
         renderBooks();
     });
 
-    // Reset Data (FR-07)
+    // Reset Data Button (FR-07)
     resetBtn.addEventListener('click', async () => {
         if (confirm('Are you sure you want to reset all data back to seed.json?')) {
             await resetData();
@@ -241,7 +314,7 @@ function setupEventListeners() {
         }
     });
 
-    // Event Delegation for dynamic cards (Status dropdown & Remove button)
+    // Book Grid Delegation: Status Change, Open Readings Modal, Remove Book
     bookListEl.addEventListener('change', async (event) => {
         if (event.target.matches('.status-badge')) {
             const readingId = parseInt(event.target.dataset.readingId, 10);
@@ -252,10 +325,84 @@ function setupEventListeners() {
     });
 
     bookListEl.addEventListener('click', async (event) => {
+        if (event.target.matches('.btn-readings')) {
+            const bookId = parseInt(event.target.dataset.bookId, 10);
+            await openReadingModal(bookId);
+        }
+
         if (event.target.matches('.btn-remove')) {
             const bookId = parseInt(event.target.dataset.bookId, 10);
             await deleteBook(bookId);
             await renderBooks();
         }
     });
+
+    // Modal Form: Add New Reading / Re-read to Existing Book
+    modalForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        modalErrorContainer.innerHTML = '';
+
+        const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
+        const status = document.getElementById('modal-status').value;
+        const yearReadRaw = document.getElementById('modal-year-read').value.trim();
+        const gradeRaw = document.getElementById('modal-grade').value.trim();
+        const priority = document.getElementById('modal-priority').value;
+        const recommendedBy = document.getElementById('modal-recommended-by').value.trim();
+        const notes = document.getElementById('modal-notes').value.trim();
+
+        try {
+            const readingDraft = {
+                bookId,
+                status,
+                yearRead: yearReadRaw !== '' ? parseInt(yearReadRaw, 10) : null,
+                grade: gradeRaw !== '' ? parseFloat(gradeRaw) : null,
+                priority: priority || null,
+                recommendedBy: recommendedBy || null,
+                notes: notes || null
+            };
+
+            const errors = validateReading(readingDraft);
+            throwValidationError(errors);
+
+            await saveReading(readingDraft);
+            modalForm.reset();
+
+            await renderModalReadings(bookId);
+            await renderBooks();
+        } catch (error) {
+            renderErrors(error, modalErrorContainer);
+        }
+    });
+
+    // Modal History Delegation: Delete Individual Reading
+    modalHistoryList.addEventListener('click', async (event) => {
+        if (event.target.matches('.btn-delete-reading')) {
+            const readingId = parseInt(event.target.dataset.readingId, 10);
+            const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
+
+            await deleteReading(readingId);
+            await renderModalReadings(bookId);
+            await renderBooks();
+        }
+    });
+
+    // Close Modal via 'X' button or backdrop click
+    closeModalBtn.addEventListener('click', () => modal.close());
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.close();
+        }
+    });
+}
+
+function renderErrors(error, container) {
+    if (error && error.status === 400) {
+        error.errors.forEach(err => {
+            const p = document.createElement('p');
+            p.textContent = `${err.field}: ${err.message}`;
+            container.appendChild(p);
+        });
+    } else {
+        console.error('Unexpected error:', error);
+    }
 }

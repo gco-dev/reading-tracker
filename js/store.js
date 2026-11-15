@@ -21,14 +21,12 @@ function getNextId(items) {
 // INITIALIZATION & SEED RESET (FR-07)
 // =========================================================
 
-// Carrega o seed.json no localStorage apenas no primeiro acesso
 export async function initializeStore() {
     if (!localStorage.getItem(STORAGE_KEYS.initialized)) {
         await resetData();
     }
 }
 
-// FR-07: Lê o seed.json original via fetch e restaura o estado inicial do banco local
 export async function resetData() {
     const response = await fetch('./seed.json');
     if (!response.ok) {
@@ -66,6 +64,11 @@ export async function getBooks() {
 
 export async function getReadings() {
     return getCollection(STORAGE_KEYS.readings);
+}
+
+export async function getReadingsByBookId(bookId) {
+    const readings = await getReadings();
+    return readings.filter(r => r.bookId === bookId);
 }
 
 // =========================================================
@@ -141,6 +144,11 @@ export async function updateReadingStatus(readingId, newStatus) {
         setCollection(STORAGE_KEYS.readings, readings);
     }
     return reading;
+}
+
+export async function deleteReading(readingId) {
+    const readings = await getReadings();
+    setCollection(STORAGE_KEYS.readings, readings.filter(r => r.id !== readingId));
 }
 
 export async function deleteBook(bookId) {
