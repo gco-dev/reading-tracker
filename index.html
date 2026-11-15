@@ -1,30 +1,51 @@
+<!-- Define que este documento usa o padrão HTML5 moderno -->
 <!DOCTYPE html>
+<!-- Tag raiz informando aos navegadores e motores de busca que o idioma é o Português do Brasil -->
 <html lang="pt-BR">
 <head>
+    <!-- Define a codificação de caracteres para suportar acentuação e cedilha corretamente -->
     <meta charset="UTF-8">
+    <!-- Garante que a página seja responsiva, adaptando-se à largura da tela em celulares e tablets -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Título que aparece na aba do navegador -->
     <title>Ex-Libris | Acervo Pessoal</title>
+    
+    <!-- Conecta este arquivo HTML ao seu arquivo de estilos CSS. 
+         Atenção: Garanta que o nome do arquivo CSS na sua pasta seja exatamente 'style.css' -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Cabeçalho principal da página: exibe o nome e o propósito do sistema -->
     <header>
         <h1>Seja muito bem-vindo(a) ao Ex-Libris</h1>
         <p class="subtitulo">Seu acervo literário pessoal</p>
     </header>
     
+    <!-- Container principal que engloba todo o conteúdo interativo da página -->
     <main>
+        <!-- SEÇÃO 1: Área dedicada ao formulário de cadastro de novos livros -->
         <section class="adicionar-livro">
             <h2>Adicionar Novo Livro</h2>
+            
+            <!-- O formulário possui o ID 'form-novo-livro', que será usado pelo JavaScript para capturar o evento de envio ('submit') -->
             <form id="form-novo-livro">
+                
+                <!-- Campo de texto para o título. A propriedade 'required' impede que o usuário salve sem preencher -->
                 <input type="text" id="novo-titulo" placeholder="Título do Livro" required>
+                
+                <!-- Campo numérico para o ano. Permite anos negativos (ex: -500) para representar a.C. -->
                 <input type="number" id="novo-ano" min="-4000" placeholder="Ex: 2024 ou -500">
                 
+                <!-- Lista suspensa que será populada dinamicamente pelo JavaScript com os autores já existentes no banco -->
                 <select id="novo-autor">
                     <option value="">Selecione o Autor...</option>
                 </select>
 
+                <!-- Campo de texto alternativo: se o autor não estiver na lista, o usuário digita aqui para criar um novo -->
                 <input type="text" id="autor-digitado" placeholder="Ou digite um novo autor">
 
+                <!-- Lista suspensa com opções fixas (estáticas) para o formato do livro -->
                 <select id="novo-formato">
                     <option value="">Selecione o Formato...</option>
                     <option value="Físico">Físico</option>
@@ -32,6 +53,7 @@
                     <option value="Audiobook">Audiobook</option>
                 </select>
 
+                <!-- Lista suspensa para o status de leitura. 'required' obriga a seleção de um status inicial -->
                 <select id="novo-status" required>
                     <option value="">Status de Leitura...</option>
                     <option value="Quero ler">Quero ler</option>
@@ -40,22 +62,31 @@
                     <option value="Abandonado">Abandonado</option>
                 </select>
 
+                <!-- Botão que aciona o evento de 'submit' do formulário -->
                 <button type="submit">Salvar Livro</button>
             </form>
         </section>
 
+        <!-- Linha horizontal divisória para separar o formulário da lista -->
         <hr>
 
-        <h2>Minha Lista de Livros <span id="contador-livros" style="font-size: 16px; color: var(--cor-madeira); font-weight: normal;">(0 livros)</span></h2>
+        <!-- SEÇÃO 2: Área dedicada à exibição e controle do acervo -->
+        <h2>Minha Lista de Livros <span id="contador-livros" style="font-size: 0.7em; color: #5c493e;"></span></h2>
         
-        <!-- NOVA SEÇÃO: Controles da Lista -->
+        <!-- Controles da lista: Botão que inverte a ordem de exibição (Recentes x Alfabética).
+             Ele chama a função 'alternarOrdenacao()' que está pendurada no 'window' lá no JS. -->
         <div class="controles-lista">
             <button id="btn-ordenacao" onclick="alternarOrdenacao()">Ordenação: Mais Recentes</button>
         </div>
 
+        <!-- Container vazio. O JavaScript usará este ID ('lista-livros') para injetar 
+             todo o HTML dos cartões de livros gerados dinamicamente. -->
         <div id="lista-livros" class="grid-livros"></div>
     </main>
 
-    <script src="script.js"></script>
+    <!-- Importação do arquivo JavaScript. 
+         - type="module": Essencial para permitir o uso de 'import' e 'export' entre seus arquivos JS (como importar o store.js).
+         - src="script.js": Este DEVE ser o nome exato do seu arquivo principal de JavaScript. Se o seu arquivo chama 'script_4.js', altere aqui. -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
