@@ -53,7 +53,7 @@ function mostrarLivrosNaTela() {
                     <p><strong>Autor:</strong> ${nomeDoAutor}</p>
                     <p><strong>Ano:</strong> ${anoExibicao}</p>
                     <p><strong>Formato:</strong> ${livro.form || 'Não informado'}</p>
-                    <button onclick="removerLivro(${livro.id})" style="background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Remover</button>
+                    <button onclick="removerLivro(${livro.id})" style="background-color: #8b2635; color: #fcf8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 12px; font-size: 13px;">Remover</button>
                 </div>
             `;
             caixaDeLivros.innerHTML += cartaoHTML;

@@ -1,56 +1,102 @@
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #dfd0b8; /* Fundo pergaminho mais intenso e quente */
+    color: #2c221e;
     margin: 0;
     padding: 20px;
     text-align: center;
 }
 
 header {
-    background-color: #2c3e50;
-    color: white;
-    padding: 20px;
+    background-color: #1f3a32; /* Verde-biblioteca clássico */
+    color: #f7f2e7;
+    padding: 28px 20px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    border-bottom: 4px solid #6b3e26; /* Marrom madeira no lugar do amarelo */
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(44, 34, 30, 0.18);
+}
+
+header h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 0.5px;
+}
+
+.subtitulo {
+    margin: 8px 0 0 0;
+    font-size: 15px;
+    color: #d8ccb8;
+    font-style: italic;
+}
+
+h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #3e2723;
 }
 
 /* Estilos do Formulário */
 .adicionar-livro {
-    background-color: white;
-    padding: 20px;
+    background-color: #fcf8f0;
+    padding: 22px;
     border-radius: 8px;
+    border: 1px solid #bfa98e;
     margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 3px 6px rgba(44, 34, 30, 0.1);
 }
 
 #form-novo-livro input, 
 #form-novo-livro select {
-    padding: 10px;
-    margin-right: 10px;
-    border: 1px solid #ddd;
+    padding: 10px 12px;
+    margin: 5px;
+    border: 1px solid #bfa98e;
     border-radius: 4px;
-    font-size: 16px;
+    background-color: #fffdf9;
+    color: #2c221e;
+    font-size: 15px;
+}
+
+/* Ajuste específico da caixa de ano para não cortar o texto */
+#novo-ano {
+    width: 145px;
+    -moz-appearance: textfield; /* Remove as setas no Firefox */
+}
+
+/* Remove as setas laterais no Chrome, Edge e Safari */
+#novo-ano::-webkit-outer-spin-button,
+#novo-ano::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#form-novo-livro input:focus, 
+#form-novo-livro select:focus {
+    outline: none;
+    border-color: #1f3a32;
 }
 
 #form-novo-livro button {
-    padding: 10px 20px;
-    background-color: #2c3e50;
-    color: white;
+    padding: 10px 22px;
+    margin: 5px;
+    background-color: #1f3a32;
+    color: #f7f2e7;
     border: none;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 15px;
+    font-weight: bold;
     cursor: pointer;
+    transition: background-color 0.2s ease;
 }
 
 #form-novo-livro button:hover {
-    background-color: #1a252f;
+    background-color: #142621;
 }
 
 hr {
     border: 0;
     height: 1px;
-    background: #ddd;
+    background: #bfa98e;
     margin: 30px 0;
 }
 
@@ -58,30 +104,40 @@ hr {
 .grid-livros {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 18px;
     justify-content: center;
     margin-top: 20px;
 }
 
-/* Visual individual de cada cartão */
+/* Visual individual de cada cartão (contorno fino preto + lombada marrom) */
 .cartao-livro {
-    background-color: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    width: 250px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    background-color: #fcf8f0;
+    border: 1px solid #1f1a17; /* Contorno fino preto em cima, direita e baixo */
+    border-left: 6px solid #6b3e26; /* Lombada marrom na esquerda */
+    border-radius: 6px;
+    padding: 18px;
+    width: 255px;
+    box-shadow: 0 4px 8px rgba(44, 34, 30, 0.14);
     text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cartao-livro:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(44, 34, 30, 0.2);
 }
 
 .cartao-livro h3 {
-    margin: 0 0 10px 0;
-    color: #2c3e50;
-    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    margin: 0 0 12px 0;
+    color: #1f3a32;
+    font-size: 19px;
+    border-bottom: 1px solid #dfd3c3;
+    padding-bottom: 8px;
 }
 
 .cartao-livro p {
-    margin: 5px 0;
-    color: #555;
+    margin: 6px 0;
+    color: #4a3b32;
     font-size: 14px;
 }
