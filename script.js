@@ -69,23 +69,42 @@ function preencherDropdownAutores() {
     }
 }
 
-// 4. ADICIONAR NOVO LIVRO
+// A linha que faltava para o JS saber quem é o "formulario"
 const formulario = document.getElementById("form-novo-livro");
 
 formulario.addEventListener("submit", function(evento) {
     evento.preventDefault(); 
+    // ... resto do código continua aqui ...
 
     const tituloDigitado = document.getElementById("novo-titulo").value;
     const anoDigitado = document.getElementById("novo-ano").value;
     const autorEscolhido = document.getElementById("novo-autor").value;
     const formatoEscolhido = document.getElementById("novo-formato").value; 
     
-    const listaDeAutores = autorEscolhido ? [parseInt(autorEscolhido)] : [];
+    // Captura o que foi digitado na nossa caixinha nova
+    const autorDigitado = document.getElementById("autor-digitado").value.trim();
 
     const dadosEmTexto = localStorage.getItem("meusDados");
     if (dadosEmTexto) {
         const dados = JSON.parse(dadosEmTexto);
+        let listaDeAutores = [];
 
+        // Lógica de decisão do autor
+        if (autorDigitado !== "") {
+            // Se digitou algo, criamos um novo autor no "banco de dados"
+            const novoIdAutor = Date.now() + 1; // +1 para não repetir o ID do livro
+            const novoAutorObj = {
+                id: novoIdAutor,
+                name: autorDigitado
+            };
+            dados.authors.push(novoAutorObj); // Cadastra o autor na lista geral
+            listaDeAutores = [novoIdAutor];   // Usa o ID novo para o livro
+        } else if (autorEscolhido) {
+            // Se não digitou nada, usa o ID do autor selecionado na lista
+            listaDeAutores = [parseInt(autorEscolhido)];
+        }
+
+        // Monta o novo livro
         const novoLivro = {
             id: Date.now(), 
             title: tituloDigitado,
@@ -96,7 +115,11 @@ formulario.addEventListener("submit", function(evento) {
 
         dados.books.push(novoLivro);
         localStorage.setItem("meusDados", JSON.stringify(dados));
+        
         mostrarLivrosNaTela();
+        
+        // Se você tiver uma função que atualiza o select de autores, seria ideal chamá-la aqui!
+        
         formulario.reset();
     }
 });
