@@ -1,5 +1,7 @@
 const CHAVE_STORAGE = "meusDados";
 
+let ordenacaoAtual = 'recente'; // Padrão: mais recentes primeiro
+
 // UTILITÁRIOS DE ARMAZENAMENTO
 function lerDados() {
     const dadosTexto = localStorage.getItem(CHAVE_STORAGE);
@@ -43,7 +45,18 @@ function mostrarLivrosNaTela() {
         return;
     }
 
-    caixaDeLivros.innerHTML = dados.books.map(livro => {
+    // NOVA LÓGICA DE ORDENAÇÃO
+    let livrosParaMostrar = [...dados.books];
+
+    if (ordenacaoAtual === 'titulo') {
+        livrosParaMostrar.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (ordenacaoAtual === 'recente') {
+        // Assume que IDs maiores são mais recentes (Date.now())
+        livrosParaMostrar.sort((a, b) => b.id - a.id);
+    }
+
+    caixaDeLivros.innerHTML = livrosParaMostrar.map(livro => {
+        // ... (resto do código continua igual a partir daqui: const autor = ...)
         const autor = livro.authorIds?.length
             ? dados.authors.find(a => a.id === livro.authorIds[0])
             : null;
@@ -192,6 +205,12 @@ function alterarStatus(idDoLivro, novoStatus) {
         salvarDados(dados);
         mostrarLivrosNaTela(); // Atualiza a tela para mudar a cor da etiqueta
     }
+}
+
+// 7. ORDENAÇÃO
+function ordenarLivros(criterio) {
+    ordenacaoAtual = criterio;
+    mostrarLivrosNaTela();
 }
 
 // INICIALIZAÇÃO

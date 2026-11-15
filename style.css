@@ -145,6 +145,28 @@ hr {
     margin: 30px 0;
 }
 
+/* Controles de Ordenação */
+.controles-lista {
+    margin-bottom: 15px;
+}
+
+.controles-lista button {
+    background-color: var(--cor-papel);
+    color: var(--cor-verde);
+    border: 1px solid var(--cor-verde);
+    padding: 6px 12px;
+    margin: 0 5px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.controles-lista button:hover {
+    background-color: var(--cor-verde);
+    color: var(--cor-papel);
+}
+
 /* Grade e Cartões */
 .grid-livros {
     display: flex;
@@ -209,6 +231,7 @@ hr {
     text-align: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     transition: transform 0.2s ease, filter 0.2s ease;
+    width: 140px; /* NOVO: Largura fixa para caber o texto */
 }
 
 .status-badge:hover {
