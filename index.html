@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Meu Reading Tracker</h1>
+    </header>
+    
+    <main>
+        <!-- Seção para adicionar novos livros -->
+        <section class="adicionar-livro">
+            <h2>Adicionar Novo Livro</h2>
+            <form id="form-novo-livro">
+                <input type="text" id="novo-titulo" placeholder="Título do Livro" required>
+                <input type="number" id="novo-ano" placeholder="Ano de Publicação">
+                
+                <!-- Caixinha para escolher o autor -->
+                <select id="novo-autor">
+                    <option value="">Selecione o Autor...</option>
+                </select>
+
+                <!-- NOVA Caixinha para escolher o formato -->
+                <select id="novo-formato">
+                    <option value="">Selecione o Formato...</option>
+                    <option value="Físico">Físico</option>
+                    <option value="E-book">E-book</option>
+                    <option value="Audiobook">Audiobook</option>
+                </select>
+
+                <button type="submit">Salvar Livro</button>
+            </form>
+        </section>
+        <hr>
+
+        <h2>Minha Lista de Livros</h2>
+        <!-- Caixa onde os cartões serão inseridos pelo JavaScript -->
+        <div id="lista-livros" class="grid-livros"></div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
