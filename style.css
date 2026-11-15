@@ -245,9 +245,24 @@ hr {
     font-weight: normal;
 }
 
-/* Cores dos Status */
-.status-quero-ler { background-color: #dfd3c3; color: #4a3b32; }
-.status-lendo { background-color: #c59b27; color: #fffdf9; }
-.status-lido { background-color: var(--cor-verde); color: #f7f2e7; }
-.status-abandonado { background-color: var(--cor-vinho); color: #f7f2e7; }
-.status-desconhecido { background-color: #a89f91; color: #fffdf9; } /* Tom neutro/cinza */
+/* Cores dos Status - Alto Contraste */
+.status-quero-ler { 
+    background-color: #8b6b4a; /* Marrom terroso */
+    color: #ffffff; 
+}
+.status-lendo { 
+    background-color: #ffc107; /* Amarelo vivo */
+    color: #2b2013; /* Texto bem escuro para contrastar com amarelo */
+}
+.status-lido { 
+    background-color: #2b7a3e; /* Verde sólido */
+    color: #ffffff; 
+}
+.status-abandonado { 
+    background-color: #b02a37; /* Vermelho escuro/Vinho */
+    color: #ffffff; 
+}
+.status-desconhecido { 
+    background-color: #6c757d; /* Cinza escuro chumbo */
+    color: #ffffff; 
+}

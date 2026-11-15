@@ -1,8 +1,15 @@
-const CHAVE_STORAGE = "meusDados";
+/**
+ * EX-LIBRIS | ACERVO PESSOAL
+ * Script principal da aplicação
+ */
 
+const CHAVE_STORAGE = "meusDados";
 let ordenacaoAtual = 'recente'; // Padrão: mais recentes primeiro
 
-// UTILITÁRIOS DE ARMAZENAMENTO
+// =========================================================
+// 1. GERENCIAMENTO DE DADOS (BANCO DE DADOS LOCAL)
+// =========================================================
+
 function lerDados() {
     const dadosTexto = localStorage.getItem(CHAVE_STORAGE);
     return dadosTexto ? JSON.parse(dadosTexto) : null;
@@ -12,8 +19,12 @@ function salvarDados(dados) {
     localStorage.setItem(CHAVE_STORAGE, JSON.stringify(dados));
 }
 
-// 1. CARREGAR DADOS INICIAIS
+// =========================================================
+// 2. INICIALIZAÇÃO DA APLICAÇÃO
+// =========================================================
+
 async function carregarDados() {
+    // Se não houver dados salvos, busca do arquivo original (seed)
     if (!lerDados()) {
         try {
             const resposta = await fetch("./seed.json");
@@ -22,7 +33,7 @@ async function carregarDados() {
             const dados = await resposta.json();
             salvarDados(dados);
         } catch (erro) {
-            console.error("Erro ao carregar dados:", erro);
+            console.error("Erro ao carregar dados iniciais:", erro);
             return;
         }
     }
@@ -30,57 +41,76 @@ async function carregarDados() {
 }
 
 function atualizarInterface() {
-    mostrarLivrosNaTela();
     preencherDropdownAutores();
+    mostrarLivrosNaTela();
 }
 
-// 2. RENDERIZAR CARTÕES DOS LIVROS
+// =========================================================
+// 3. RENDERIZAÇÃO DA INTERFACE (TELA)
+// =========================================================
+
+function preencherDropdownAutores() {
+    const dados = lerDados();
+    const dropdown = document.getElementById("novo-autor");
+    if (!dados) return;
+
+    // Ordena os autores em ordem alfabética para facilitar a busca
+    const autoresOrdenados = [...dados.authors].sort((a, b) => 
+        a.name.localeCompare(b.name)
+    );
+
+    const opcoesAutores = autoresOrdenados
+        .map(autor => `<option value="${autor.id}">${autor.name}</option>`)
+        .join("");
+
+    dropdown.innerHTML = `<option value="">Selecione o Autor...</option>${opcoesAutores}`;
+}
+
 function mostrarLivrosNaTela() {
     const dados = lerDados();
     const caixaDeLivros = document.getElementById("lista-livros");
     if (!dados) return;
 
+    // Mensagem de acervo vazio
     if (dados.books.length === 0) {
         caixaDeLivros.innerHTML = '<p class="mensagem-vazia">Nenhum livro cadastrado no acervo ainda.</p>';
         return;
     }
 
-    // NOVA LÓGICA DE ORDENAÇÃO
+    // Aplica a regra de ordenação selecionada
     let livrosParaMostrar = [...dados.books];
-
     if (ordenacaoAtual === 'titulo') {
         livrosParaMostrar.sort((a, b) => a.title.localeCompare(b.title));
     } else if (ordenacaoAtual === 'recente') {
-        // Assume que IDs maiores são mais recentes (Date.now())
         livrosParaMostrar.sort((a, b) => b.id - a.id);
     }
 
+    // Constrói os cartões dos livros em HTML
     caixaDeLivros.innerHTML = livrosParaMostrar.map(livro => {
-        // ... (resto do código continua igual a partir daqui: const autor = ...)
-        const autor = livro.authorIds?.length
-            ? dados.authors.find(a => a.id === livro.authorIds[0])
-            : null;
-        const nomeDoAutor = autor ? autor.name : "Autor não informado";
-
-        let anoExibicao = "Não informado";
-        if (livro.publicationYear) {
-            anoExibicao = livro.publicationYear < 0
-                ? `${Math.abs(livro.publicationYear)} a.C.`
-                : livro.publicationYear;
+        // Busca o nome do autor
+        let nomeDoAutor = "Autor Desconhecido";
+        if (livro.authorIds?.length > 0) {
+            const autorEncontrado = dados.authors.find(a => a.id === livro.authorIds[0]);
+            if (autorEncontrado) nomeDoAutor = autorEncontrado.name;
         }
 
-        // Define o status (padrão agora é "Desconhecido")
+        // Formata o ano de publicação (trata anos a.C.)
+        let anoExibicao = livro.publicationYear 
+            ? (livro.publicationYear < 0 ? `${Math.abs(livro.publicationYear)} a.C.` : livro.publicationYear)
+            : "Não informado";
+
+        // Configuração da Etiqueta de Status Interativa
         const statusLivro = livro.status || "Desconhecido";
         const classeStatus = statusLivro.toLowerCase().replace(" ", "-");
-
-        // Gera as opções do dropdown interativo no cartão
         const opcoesStatus = ["Desconhecido", "Quero ler", "Lendo", "Lido", "Abandonado"];
+        
         const selectStatusHTML = `
             <select class="status-badge status-${classeStatus}" onchange="alterarStatus(${livro.id}, this.value)">
                 ${opcoesStatus.map(s => `<option value="${s}" ${s === statusLivro ? "selected" : ""}>${s}</option>`).join("")}
             </select>
         `;
 
+        // Retorna a estrutura do cartão
         return `
             <div class="cartao-livro">
                 ${selectStatusHTML}
@@ -94,58 +124,37 @@ function mostrarLivrosNaTela() {
     }).join("");
 }
 
-// 3. PREENCHER SELECT DE AUTORES
-function preencherDropdownAutores() {
-    const dados = lerDados();
-    const dropdown = document.getElementById("novo-autor");
-    if (!dados) return;
+// =========================================================
+// 4. AÇÕES DO USUÁRIO (INTERATIVIDADE)
+// =========================================================
 
-    // Cria uma cópia da lista de autores e ordena por nome
-    const autoresOrdenados = [...dados.authors].sort((a, b) => 
-        a.name.localeCompare(b.name)
-    );
-
-    const opcoesAutores = autoresOrdenados
-        .map(autor => `<option value="${autor.id}">${autor.name}</option>`)
-        .join("");
-
-    dropdown.innerHTML = `<option value="">Selecione o Autor...</option>${opcoesAutores}`;
-}
-
-// 4. FORMULÁRIO E CADASTRO DE NOVO LIVRO
+// --- 4.1. Cadastro de Novo Livro ---
 const formulario = document.getElementById("form-novo-livro");
-
 formulario.addEventListener("submit", function(evento) {
     evento.preventDefault();
 
-    const tituloDigitado = document.getElementById("novo-titulo").value.trim();
-    const anoDigitado = document.getElementById("novo-ano").value.trim();
-    const autorEscolhido = document.getElementById("novo-autor").value;
-    const formatoEscolhido = document.getElementById("novo-formato").value;
-    const statusEscolhido = document.getElementById("novo-status").value; // NOVO CAMPO
+    // Captura e limpa os espaços dos valores digitados
+    const titulo = document.getElementById("novo-titulo").value.trim();
+    const ano = document.getElementById("novo-ano").value.trim();
+    const autorId = document.getElementById("novo-autor").value;
     const autorDigitado = document.getElementById("autor-digitado").value.trim();
+    const formato = document.getElementById("novo-formato").value;
+    const status = document.getElementById("novo-status").value;
 
-    if (!tituloDigitado) {
-        alert("Por favor, digite o título do livro.");
-        return;
-    }
+    // Validações Básicas
+    if (!titulo) return alert("Por favor, digite o título do livro.");
+    if (!autorId && !autorDigitado) return alert("Por favor, selecione um autor da lista ou digite um novo.");
 
-    if (!autorEscolhido && !autorDigitado) {
-        alert("Por favor, selecione um autor da lista ou digite um novo.");
-        return;
-    }
-
-    if (anoDigitado !== "") {
-        const anoNumero = Number(anoDigitado);
+    if (ano !== "") {
+        const anoNumero = Number(ano);
         const anoAtual = new Date().getFullYear();
-
         if (isNaN(anoNumero) || anoNumero < -4000 || anoNumero === 0 || anoNumero > anoAtual + 1) {
-            alert(`Por favor, digite um ano válido (use números negativos para a.C., como -500, até ${anoAtual + 1}).`);
-            return;
+            return alert(`Por favor, digite um ano válido (use números negativos para a.C., como -500, até ${anoAtual + 1}).`);
         }
     }
 
-    salvarNovoLivro(tituloDigitado, anoDigitado, autorEscolhido, autorDigitado, formatoEscolhido, statusEscolhido);
+    // Salva o livro se passar nas validações
+    salvarNovoLivro(titulo, ano, autorId, autorDigitado, formato, status);
     formulario.reset();
 });
 
@@ -155,15 +164,13 @@ function salvarNovoLivro(titulo, ano, autorId, autorNome, formato, status) {
 
     let listaDeAutores = [];
 
+    // Trata se o usuário digitou um autor novo ou usou um da lista
     if (autorNome) {
-        const autorExistente = dados.authors.find(
-            autor => autor.name.trim().toLowerCase() === autorNome.toLowerCase()
-        );
-
+        const autorExistente = dados.authors.find(a => a.name.trim().toLowerCase() === autorNome.toLowerCase());
         if (autorExistente) {
             listaDeAutores = [autorExistente.id];
         } else {
-            const novoIdAutor = Date.now() + 1;
+            const novoIdAutor = Date.now() + 1; // Cria ID único para o autor
             dados.authors.push({ id: novoIdAutor, name: autorNome });
             listaDeAutores = [novoIdAutor];
         }
@@ -171,30 +178,32 @@ function salvarNovoLivro(titulo, ano, autorId, autorNome, formato, status) {
         listaDeAutores = [parseInt(autorId, 10)];
     }
 
+    // Registra o livro no acervo
     dados.books.push({
-        id: Date.now(),
+        id: Date.now(), // ID único baseado no tempo
         title: titulo,
         publicationYear: ano ? parseInt(ano, 10) : null,
         authorIds: listaDeAutores,
         form: formato || "Não informado",
-        status: status || "Lido" // Salva o status
+        status: status || "Lido" 
     });
 
     salvarDados(dados);
     atualizarInterface();
 }
 
-// 5. REMOVER LIVRO
+// --- 4.2. Excluir Livro ---
 function removerLivro(idDoLivro) {
     const dados = lerDados();
     if (!dados) return;
 
+    // Filtra a lista, mantendo apenas os livros que têm ID diferente do excluído
     dados.books = dados.books.filter(livro => livro.id !== idDoLivro);
     salvarDados(dados);
     mostrarLivrosNaTela();
 }
 
-// 6. ALTERAR STATUS DIRETAMENTE NO CARTÃO
+// --- 4.3. Alterar Status de Leitura ---
 function alterarStatus(idDoLivro, novoStatus) {
     const dados = lerDados();
     if (!dados) return;
@@ -203,15 +212,27 @@ function alterarStatus(idDoLivro, novoStatus) {
     if (livro) {
         livro.status = novoStatus;
         salvarDados(dados);
-        mostrarLivrosNaTela(); // Atualiza a tela para mudar a cor da etiqueta
+        mostrarLivrosNaTela();
     }
 }
 
-// 7. ORDENAÇÃO
-function ordenarLivros(criterio) {
-    ordenacaoAtual = criterio;
+// --- 4.4. Alternar Método de Ordenação ---
+function alternarOrdenacao() {
+    const botao = document.getElementById("btn-ordenacao");
+
+    if (ordenacaoAtual === 'recente') {
+        ordenacaoAtual = 'titulo';
+        botao.innerText = "Ordenação: A-Z";
+    } else {
+        ordenacaoAtual = 'recente';
+        botao.innerText = "Ordenação: Mais Recentes";
+    }
+    
     mostrarLivrosNaTela();
 }
 
-// INICIALIZAÇÃO
+// =========================================================
+// 5. DAR A PARTIDA NO APLICATIVO
+// =========================================================
+// Esta é a linha que havia sido apagada acidentalmente!
 carregarDados();
