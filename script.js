@@ -125,11 +125,22 @@ function salvarNovoLivro(titulo, ano, autorId, autorNome, formato) {
     const dados = JSON.parse(dadosEmTexto);
     let listaDeAutores = [];
 
-    // Lógica para definir quem é o autor
+    // Lógica para definir quem é o autor (com trava contra duplicados)
     if (autorNome !== "") {
-        const novoIdAutor = Date.now() + 1; 
-        dados.authors.push({ id: novoIdAutor, name: autorNome });
-        listaDeAutores = [novoIdAutor];
+        // Procura se já existe um autor com o mesmo nome (ignorando maiúsculas/minúsculas)
+        const autorExistente = dados.authors.find(
+            autor => autor.name.trim().toLowerCase() === autorNome.toLowerCase()
+        );
+
+        if (autorExistente) {
+            // Reaproveita o ID do autor que já estava cadastrado
+            listaDeAutores = [autorExistente.id];
+        } else {
+            // Cria um novo autor apenas se ele realmente não existir
+            const novoIdAutor = Date.now() + 1; 
+            dados.authors.push({ id: novoIdAutor, name: autorNome });
+            listaDeAutores = [novoIdAutor];
+        }
     } else {
         listaDeAutores = [parseInt(autorId)];
     }
@@ -148,8 +159,8 @@ function salvarNovoLivro(titulo, ano, autorId, autorNome, formato) {
     localStorage.setItem("meusDados", JSON.stringify(dados));
     
     mostrarLivrosNaTela();
-    preencherDropdownAutores(); // Atualiza a lista de autores (o <select>) imediatamente!
-};
+    preencherDropdownAutores();
+}
 
 // 5. REMOVER LIVRO
 function removerLivro(idDoLivro) {
