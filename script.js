@@ -56,8 +56,21 @@ function mostrarLivrosNaTela() {
                 : livro.publicationYear;
         }
 
+        // Define o status (padrão agora é "Desconhecido")
+        const statusLivro = livro.status || "Desconhecido";
+        const classeStatus = statusLivro.toLowerCase().replace(" ", "-");
+
+        // Gera as opções do dropdown interativo no cartão
+        const opcoesStatus = ["Desconhecido", "Quero ler", "Lendo", "Lido", "Abandonado"];
+        const selectStatusHTML = `
+            <select class="status-badge status-${classeStatus}" onchange="alterarStatus(${livro.id}, this.value)">
+                ${opcoesStatus.map(s => `<option value="${s}" ${s === statusLivro ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+        `;
+
         return `
             <div class="cartao-livro">
+                ${selectStatusHTML}
                 <h3>${livro.title}</h3>
                 <p><strong>Autor:</strong> ${nomeDoAutor}</p>
                 <p><strong>Ano:</strong> ${anoExibicao}</p>
@@ -74,7 +87,12 @@ function preencherDropdownAutores() {
     const dropdown = document.getElementById("novo-autor");
     if (!dados) return;
 
-    const opcoesAutores = dados.authors
+    // Cria uma cópia da lista de autores e ordena por nome
+    const autoresOrdenados = [...dados.authors].sort((a, b) => 
+        a.name.localeCompare(b.name)
+    );
+
+    const opcoesAutores = autoresOrdenados
         .map(autor => `<option value="${autor.id}">${autor.name}</option>`)
         .join("");
 
@@ -91,6 +109,7 @@ formulario.addEventListener("submit", function(evento) {
     const anoDigitado = document.getElementById("novo-ano").value.trim();
     const autorEscolhido = document.getElementById("novo-autor").value;
     const formatoEscolhido = document.getElementById("novo-formato").value;
+    const statusEscolhido = document.getElementById("novo-status").value; // NOVO CAMPO
     const autorDigitado = document.getElementById("autor-digitado").value.trim();
 
     if (!tituloDigitado) {
@@ -113,11 +132,11 @@ formulario.addEventListener("submit", function(evento) {
         }
     }
 
-    salvarNovoLivro(tituloDigitado, anoDigitado, autorEscolhido, autorDigitado, formatoEscolhido);
+    salvarNovoLivro(tituloDigitado, anoDigitado, autorEscolhido, autorDigitado, formatoEscolhido, statusEscolhido);
     formulario.reset();
 });
 
-function salvarNovoLivro(titulo, ano, autorId, autorNome, formato) {
+function salvarNovoLivro(titulo, ano, autorId, autorNome, formato, status) {
     const dados = lerDados();
     if (!dados) return;
 
@@ -144,7 +163,8 @@ function salvarNovoLivro(titulo, ano, autorId, autorNome, formato) {
         title: titulo,
         publicationYear: ano ? parseInt(ano, 10) : null,
         authorIds: listaDeAutores,
-        form: formato || "Não informado"
+        form: formato || "Não informado",
+        status: status || "Lido" // Salva o status
     });
 
     salvarDados(dados);
@@ -159,6 +179,19 @@ function removerLivro(idDoLivro) {
     dados.books = dados.books.filter(livro => livro.id !== idDoLivro);
     salvarDados(dados);
     mostrarLivrosNaTela();
+}
+
+// 6. ALTERAR STATUS DIRETAMENTE NO CARTÃO
+function alterarStatus(idDoLivro, novoStatus) {
+    const dados = lerDados();
+    if (!dados) return;
+
+    const livro = dados.books.find(l => l.id === idDoLivro);
+    if (livro) {
+        livro.status = novoStatus;
+        salvarDados(dados);
+        mostrarLivrosNaTela(); // Atualiza a tela para mudar a cor da etiqueta
+    }
 }
 
 // INICIALIZAÇÃO

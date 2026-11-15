@@ -189,3 +189,42 @@ hr {
     color: #5c493e;
     font-style: italic;
 }
+/* Etiqueta de Status do Livro (Agora Interativa) */
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.status-badge:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.status-badge option {
+    background-color: var(--cor-papel);
+    color: var(--cor-texto);
+    font-weight: normal;
+}
+
+/* Cores dos Status */
+.status-quero-ler { background-color: #dfd3c3; color: #4a3b32; }
+.status-lendo { background-color: #c59b27; color: #fffdf9; }
+.status-lido { background-color: var(--cor-verde); color: #f7f2e7; }
+.status-abandonado { background-color: var(--cor-vinho); color: #f7f2e7; }
+.status-desconhecido { background-color: #a89f91; color: #fffdf9; } /* Tom neutro/cinza */
