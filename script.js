@@ -79,6 +79,8 @@ function mostrarLivrosNaTela() {
 
     // Aplica a regra de ordenação selecionada
     let livrosParaMostrar = [...dados.books];
+    // Atualiza o contador na tela
+    document.getElementById("contador-livros").innerText = `(${livrosParaMostrar.length} livros)`;
     if (ordenacaoAtual === 'titulo') {
         livrosParaMostrar.sort((a, b) => a.title.localeCompare(b.title));
     } else if (ordenacaoAtual === 'recente') {
