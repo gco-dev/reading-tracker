@@ -17,7 +17,7 @@
             <h2>Adicionar Novo Livro</h2>
             <form id="form-novo-livro">
                 <input type="text" id="novo-titulo" placeholder="Título do Livro" required>
-                <input type="number" id="novo-ano" placeholder="Ano de Publicação">
+                <input type="number" id="novo-ano" min="-4000" max="2027" placeholder="Ex: 2024 ou -500">
                 
                 <!-- Caixinha para escolher o autor -->
                 <select id="novo-autor">

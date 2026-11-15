@@ -39,12 +39,19 @@ function mostrarLivrosNaTela() {
                 }
             }
 
+            let anoExibicao = "Não informado";
+            if (livro.publicationYear) {
+                anoExibicao = livro.publicationYear < 0 
+                    ? `${Math.abs(livro.publicationYear)} a.C.` 
+                    : livro.publicationYear;
+            }
+
             // Adicionado o botão de Remover dentro do cartão HTML
             const cartaoHTML = `
                 <div class="cartao-livro">
                     <h3>${livro.title}</h3>
                     <p><strong>Autor:</strong> ${nomeDoAutor}</p>
-                    <p><strong>Ano:</strong> ${livro.publicationYear || 'Não informado'}</p>
+                    <p><strong>Ano:</strong> ${anoExibicao}</p>
                     <p><strong>Formato:</strong> ${livro.form || 'Não informado'}</p>
                     <button onclick="removerLivro(${livro.id})" style="background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Remover</button>
                 </div>
@@ -69,60 +76,80 @@ function preencherDropdownAutores() {
     }
 }
 
-// A linha que faltava para o JS saber quem é o "formulario"
+// 4. ADICIONAR NOVO LIVRO
 const formulario = document.getElementById("form-novo-livro");
 
 formulario.addEventListener("submit", function(evento) {
     evento.preventDefault(); 
-    // ... resto do código continua aqui ...
 
-    const tituloDigitado = document.getElementById("novo-titulo").value;
-    const anoDigitado = document.getElementById("novo-ano").value;
+    const tituloDigitado = document.getElementById("novo-titulo").value.trim();
+    const anoDigitado = document.getElementById("novo-ano").value.trim();
     const autorEscolhido = document.getElementById("novo-autor").value;
     const formatoEscolhido = document.getElementById("novo-formato").value; 
-    
-    // Captura o que foi digitado na nossa caixinha nova
     const autorDigitado = document.getElementById("autor-digitado").value.trim();
 
-    const dadosEmTexto = localStorage.getItem("meusDados");
-    if (dadosEmTexto) {
-        const dados = JSON.parse(dadosEmTexto);
-        let listaDeAutores = [];
-
-        // Lógica de decisão do autor
-        if (autorDigitado !== "") {
-            // Se digitou algo, criamos um novo autor no "banco de dados"
-            const novoIdAutor = Date.now() + 1; // +1 para não repetir o ID do livro
-            const novoAutorObj = {
-                id: novoIdAutor,
-                name: autorDigitado
-            };
-            dados.authors.push(novoAutorObj); // Cadastra o autor na lista geral
-            listaDeAutores = [novoIdAutor];   // Usa o ID novo para o livro
-        } else if (autorEscolhido) {
-            // Se não digitou nada, usa o ID do autor selecionado na lista
-            listaDeAutores = [parseInt(autorEscolhido)];
-        }
-
-        // Monta o novo livro
-        const novoLivro = {
-            id: Date.now(), 
-            title: tituloDigitado,
-            publicationYear: anoDigitado ? parseInt(anoDigitado) : null,
-            authorIds: listaDeAutores, 
-            form: formatoEscolhido || "Não informado" 
-        };
-
-        dados.books.push(novoLivro);
-        localStorage.setItem("meusDados", JSON.stringify(dados));
-        
-        mostrarLivrosNaTela();
-        
-        // Se você tiver uma função que atualiza o select de autores, seria ideal chamá-la aqui!
-        
-        formulario.reset();
+    // Validação de título
+    if (tituloDigitado === "") {
+        alert("Por favor, digite o título do livro.");
+        return; 
     }
+
+    // Validação de autor
+    if (autorEscolhido === "" && autorDigitado === "") {
+        alert("Por favor, selecione um autor da lista ou digite um novo.");
+        return;
+    }
+
+    // NOVA VALIDAÇÃO: Regras rígidas para o Ano de Publicação
+    if (anoDigitado !== "") {
+        const anoNumero = Number(anoDigitado);
+        const anoAtual = new Date().getFullYear();
+
+        if (isNaN(anoNumero) || anoNumero < -4000 || anoNumero === 0 || anoNumero > (anoAtual + 1)) {
+            alert(`Por favor, digite um ano válido (use números negativos para a.C., como -500, até ${anoAtual + 1}).`);
+            return;
+        }
+    }
+
+    // Se passou pelas validações, salva o livro
+    salvarNovoLivro(tituloDigitado, anoDigitado, autorEscolhido, autorDigitado, formatoEscolhido);
+    
+    formulario.reset();
 });
+
+// Função isolada apenas para lidar com os dados
+function salvarNovoLivro(titulo, ano, autorId, autorNome, formato) {
+    const dadosEmTexto = localStorage.getItem("meusDados");
+    if (!dadosEmTexto) return;
+
+    const dados = JSON.parse(dadosEmTexto);
+    let listaDeAutores = [];
+
+    // Lógica para definir quem é o autor
+    if (autorNome !== "") {
+        const novoIdAutor = Date.now() + 1; 
+        dados.authors.push({ id: novoIdAutor, name: autorNome });
+        listaDeAutores = [novoIdAutor];
+    } else {
+        listaDeAutores = [parseInt(autorId)];
+    }
+
+    // Monta o objeto do livro
+    const novoLivro = {
+        id: Date.now(), 
+        title: titulo,
+        publicationYear: ano ? parseInt(ano) : null,
+        authorIds: listaDeAutores, 
+        form: formato || "Não informado" 
+    };
+
+    // Salva no "banco de dados" e atualiza a tela
+    dados.books.push(novoLivro);
+    localStorage.setItem("meusDados", JSON.stringify(dados));
+    
+    mostrarLivrosNaTela();
+    preencherDropdownAutores(); // Atualiza a lista de autores (o <select>) imediatamente!
+};
 
 // 5. REMOVER LIVRO
 function removerLivro(idDoLivro) {
