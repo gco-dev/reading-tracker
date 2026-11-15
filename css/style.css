@@ -1,0 +1,345 @@
+/* ==========================================================================
+   COLOR VARIABLES (CLASSIC LITERARY PALETTE)
+   ========================================================================== */
+:root {
+    --color-bg: #dfd0b8;            /* Page background (warm parchment) */
+    --color-paper: #fcf8f0;         /* Card and form surface (light cream) */
+    --color-green: #1f3a32;         /* Primary header and title color */
+    --color-green-hover: #284b41;   /* Slightly lighter green for hover states */
+    --color-wood: #6b3e26;          /* Book spine accent and borders */
+    --color-wine: #8b2635;          /* Destructive actions and error text */
+    --color-wine-hover: #a32c3e;    /* Hover state for destructive buttons */
+    --color-text: #2c221e;          /* Primary dark brown body text */
+    --color-border-soft: #bfa98e;   /* Input borders and horizontal dividers */
+}
+
+/* ==========================================================================
+   GENERAL PAGE SETUP
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   HEADER & TYPOGRAPHY
+   ========================================================================== */
+header {
+    background-color: var(--color-green);
+    color: #f7f2e7;
+    padding: 28px 20px;
+    border-radius: 8px;
+    border-bottom: 4px solid var(--color-wood);
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(44, 34, 30, 0.18);
+}
+
+header h1, h2, .book-card h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 0.5px;
+}
+
+.subtitle {
+    margin: 8px 0 0 0;
+    font-size: 15px;
+    color: #d8ccb8;
+    font-style: italic;
+}
+
+h2 {
+    color: #3e2723;
+}
+
+.book-counter {
+    font-size: 0.7em;
+    color: #5c493e;
+    font-weight: normal;
+}
+
+/* ==========================================================================
+   FORM SECTION (ADD NEW BOOK & READING)
+   ========================================================================== */
+.add-book-section {
+    background-color: var(--color-paper);
+    padding: 22px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-soft);
+    margin-bottom: 20px;
+    box-shadow: 0 3px 6px rgba(44, 34, 30, 0.1);
+}
+
+#form-new-book input,
+#form-new-book select {
+    padding: 10px 12px;
+    margin: 5px;
+    border: 1px solid var(--color-border-soft);
+    border-radius: 4px;
+    background-color: #fffdf9;
+    color: var(--color-text);
+    font-size: 15px;
+}
+
+#new-year,
+#new-year-read,
+#new-grade {
+    width: 195px;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+#new-year::-webkit-outer-spin-button,
+#new-year::-webkit-inner-spin-button,
+#new-year-read::-webkit-outer-spin-button,
+#new-year-read::-webkit-inner-spin-button,
+#new-grade::-webkit-outer-spin-button,
+#new-grade::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+#form-new-book input:focus,
+#form-new-book select:focus {
+    outline: none;
+    border-color: var(--color-green);
+}
+
+/* Validation Error Box (FR-06) - Hidden automatically when empty */
+.error-container {
+    max-width: 650px;
+    margin: 14px auto 0 auto;
+    padding: 10px 14px;
+    background-color: #f8e6e8;
+    border: 1px solid var(--color-wine);
+    border-radius: 6px;
+    color: var(--color-wine);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.error-container:empty {
+    display: none;
+}
+
+.error-container p {
+    margin: 4px 0;
+}
+
+/* ==========================================================================
+   BUTTONS (SAVE & REMOVE)
+   ========================================================================== */
+#form-new-book button,
+.btn-remove {
+    color: var(--color-paper);
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+#form-new-book button {
+    padding: 10px 22px;
+    margin: 5px;
+    background-color: var(--color-green);
+    font-size: 15px;
+}
+
+#form-new-book button:hover {
+    background-color: var(--color-green-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px rgba(31, 58, 50, 0.3);
+}
+
+#form-new-book button:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-remove {
+    background-color: var(--color-wine);
+    padding: 6px 12px;
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.btn-remove:hover {
+    background-color: var(--color-wine-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(139, 38, 53, 0.3);
+}
+
+.btn-remove:active {
+    transform: translateY(1px) scale(0.96);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   DIVIDERS & LIST CONTROLS
+   ========================================================================== */
+hr {
+    border: 0;
+    height: 1px;
+    background: var(--color-border-soft);
+    margin: 30px 0;
+}
+
+.list-controls {
+    margin-bottom: 15px;
+}
+
+.list-controls button {
+    background-color: var(--color-paper);
+    color: var(--color-green);
+    border: 1px solid var(--color-green);
+    padding: 6px 14px;
+    margin: 0 5px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.list-controls button:hover {
+    background-color: var(--color-green);
+    color: var(--color-paper);
+}
+
+.list-controls .btn-reset {
+    border-color: var(--color-wine);
+    color: var(--color-wine);
+}
+
+.list-controls .btn-reset:hover {
+    background-color: var(--color-wine);
+    color: var(--color-paper);
+}
+
+/* ==========================================================================
+   FLEXBOX GRID & BOOK CARDS
+   ========================================================================== */
+.book-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.book-card {
+    background-color: var(--color-paper);
+    border: 1px solid #1f1a17;
+    border-left: 6px solid var(--color-wood);
+    border-radius: 6px;
+    padding: 18px;
+    width: 265px;
+    box-shadow: 0 4px 8px rgba(44, 34, 30, 0.14);
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(44, 34, 30, 0.2);
+}
+
+.book-card h3 {
+    margin: 0 0 12px 0;
+    color: var(--color-green);
+    font-size: 19px;
+    border-bottom: 1px solid #dfd3c3;
+    padding-bottom: 8px;
+}
+
+.book-card p {
+    margin: 6px 0;
+    color: #4a3b32;
+    font-size: 14px;
+}
+
+.empty-message {
+    color: #5c493e;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   INTERACTIVE STATUS BADGES (HIGH CONTRAST)
+   ========================================================================== */
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, filter 0.2s ease;
+    width: 150px;
+}
+
+.status-badge:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.status-badge option {
+    background-color: var(--color-paper);
+    color: var(--color-text);
+    font-weight: normal;
+}
+
+.status-want-to-read {
+    background-color: #8b6b4a;
+    color: #ffffff;
+}
+
+.status-reading {
+    background-color: #ffc107;
+    color: #2b2013;
+}
+
+.status-paused {
+    background-color: #495057;
+    color: #ffffff;
+}
+
+.status-read {
+    background-color: #2b7a3e;
+    color: #ffffff;
+}
+
+.status-abandoned {
+    background-color: #b02a37;
+    color: #ffffff;
+}
+
+.status-unknown {
+    background-color: #6c757d;
+    color: #ffffff;
+}
