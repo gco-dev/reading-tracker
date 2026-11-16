@@ -1,128 +1,219 @@
-/* File: css/style.css */
-
 /* =========================================
-   Light Theme (Default Glassmorphism)
+   File: css/style.css
+   Ex-Libris | High-Contrast True Glassmorphism
    ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+/* --- 1. THEME VARIABLES (LIGHT & DARK) --- */
 :root {
-    /* Backgrounds & Glass Properties */
-    --bg-color: #f3f4f6; /* Soft parchment/neutral background */
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    --glass-blur: blur(12px);
-
-    /* Text Colors */
-    --text-primary: #1e293b;
+    --bg-gradient: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 50%, #e2e8f0 100%);
+    --panel-bg: rgba(255, 255, 255, 0.65);
+    --panel-border: 1px solid rgba(255, 255, 255, 0.4);
+    --text-primary: #0f172a;
     --text-secondary: #475569;
+    --backdrop-blur: blur(12px);
+    --panel-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 
-    /* Accents (Wood/Green tones) */
-    --accent-primary: #16a34a; 
-    --accent-hover: #15803d;
+    --accent-color: #0f172a; 
+    --accent-hover: #334155;
+    --danger-color: #dc2626;
     
-    /* Reading Status Badges (High Contrast Light Mode) */
-    --badge-want-to-read-bg: #dbeafe;
-    --badge-want-to-read-text: #1e40af;
-    --badge-reading-bg: #fef08a;
-    --badge-reading-text: #854d0e;
-    --badge-paused-bg: #ffedd5;
-    --badge-paused-text: #9a3412;
-    --badge-read-bg: #dcfce7;
-    --badge-read-text: #166534;
-    --badge-abandoned-bg: #fee2e2;
-    --badge-abandoned-text: #991b1b;
+    --input-bg: rgba(255, 255, 255, 0.6);
+    --input-border: rgba(15, 23, 42, 0.2);
+    --input-focus: rgba(15, 23, 42, 0.1);
+    
+    /* Badges - Light Mode */
+    --badge-want: #ffffff; --text-want: #0f172a;
+    --badge-read: #dcfce7; --text-read: #166534;
+    --badge-reading: #fef08a; --text-reading: #854d0e;
+    --badge-paused: #ffedd5; --text-paused: #9a3412;
+    --badge-abandoned: #fee2e2; --text-abandoned: #991b1b;
 }
 
-/* =========================================
-   Dark Theme (Dark Glassmorphism)
-   ========================================= */
 [data-theme="dark"] {
-    /* Backgrounds & Glass Properties */
-    --bg-color: #0f172a; /* Deep slate background */
-    --glass-bg: rgba(15, 23, 42, 0.75);
-    --glass-border: rgba(255, 255, 255, 0.15); /* Subtle bright border */
-    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-
-    /* Text Colors */
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #090d16 100%);
+    --panel-bg: rgba(15, 23, 42, 0.75);
+    --panel-border: 1px solid rgba(255, 255, 255, 0.1);
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
+    --backdrop-blur: blur(12px);
+    --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 
-    /* Accents */
-    --accent-primary: #4ade80; /* Brighter neon green for dark mode */
-    --accent-hover: #22c55e;
-
-    /* Reading Status Badges (Inverted for Dark Mode Legibility) */
-    --badge-want-to-read-bg: #1e3a8a;
-    --badge-want-to-read-text: #bfdbfe;
-    --badge-reading-bg: #713f12;
-    --badge-reading-text: #fef08a;
-    --badge-paused-bg: #7c2d12;
-    --badge-paused-text: #ffedd5;
-    --badge-read-bg: #14532d;
-    --badge-read-text: #bbf7d0;
-    --badge-abandoned-bg: #7f1d1d;
-    --badge-abandoned-text: #fecaca;
+    --accent-color: #f8fafc; 
+    --accent-hover: #cbd5e1;
+    --danger-color: #ef4444;
+    
+    --input-bg: rgba(0, 0, 0, 0.4);
+    --input-border: rgba(255, 255, 255, 0.15);
+    --input-focus: rgba(255, 255, 255, 0.2);
+    
+    /* Badges - Dark Mode */
+    --badge-want: rgba(255, 255, 255, 0.15); --text-want: #f8fafc;
+    --badge-read: rgba(20, 83, 45, 0.8); --text-read: #bbf7d0;
+    --badge-reading: rgba(113, 63, 18, 0.8); --text-reading: #fef08a;
+    --badge-paused: rgba(124, 45, 18, 0.8); --text-paused: #ffedd5;
+    --badge-abandoned: rgba(127, 29, 29, 0.8); --text-abandoned: #fecaca;
 }
 
-/* =========================================
-   Global & Utility Styles
-   ========================================= */
+/* --- 2. GLOBAL RESET & BASE --- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-    background-color: var(--bg-color);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    background: var(--bg-gradient);
     color: var(--text-primary);
-    transition: background-color 0.4s ease, color 0.4s ease;
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 0;
+    min-height: 100vh;
+    padding: 20px 40px;
+    background-attachment: fixed;
+    font-size: 14px;
+    transition: background 0.5s ease, color 0.5s ease;
 }
 
-/* Generic Glass Panel Class */
-.glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur); /* Safari Support */
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    border-radius: 16px;
-    transition: background 0.4s ease, border-color 0.4s ease;
+/* --- 3. LAYOUT & GLASSMORPHISM CORE --- */
+header, 
+section.add-book-section, 
+section.library-section,
+.book-card,
+.modal-content {
+    background: var(--panel-bg);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+    border-radius: 12px; 
+    transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* Theme Toggle Button Specific Styling */
-.btn-theme {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 1.2rem;
-    transition: transform 0.2s ease, background 0.3s ease, border-color 0.3s ease;
-    color: var(--text-primary); /* For icon legibility if emoji isn't rendered */
+header, section.add-book-section, section.library-section {
+    max-width: 960px;
+    margin: 0 auto 24px auto;
+    padding: 24px 32px; 
 }
 
-.btn-theme:hover {
-    transform: scale(1.05);
-    background: rgba(255, 255, 255, 0.1);
+/* --- 4. HEADER --- */
+header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -1px; margin: 0; }
+h2 { font-size: 1.25rem; margin-bottom: 20px; font-weight: 600; letter-spacing: -0.5px; border-bottom: var(--panel-border); padding-bottom: 12px; }
+.subtitle { color: var(--text-secondary); font-size: 0.95rem; font-weight: 300; margin-top: 4px; }
+.header-actions { display: flex; gap: 10px; }
+hr { border: none; border-top: var(--panel-border); margin: 20px 0; }
+
+/* --- 5. FORMS & INPUTS --- */
+.form-group { margin-bottom: 14px; }
+.inline-group { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+.inline-group > div { flex: 1; }
+
+input, select, textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 400;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Example Usage for Status Badges */
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-weight: 600;
-    font-size: 0.875rem;
-    display: inline-block;
-    transition: background-color 0.4s ease, color 0.4s ease;
+input::placeholder, textarea::placeholder { color: var(--text-secondary); font-weight: 300; }
+input:focus, select:focus, textarea:focus { border-color: var(--text-primary); box-shadow: 0 0 0 4px var(--input-focus); background: var(--panel-bg); }
+input:disabled, select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.field-error { display: block; color: var(--danger-color); font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; font-weight: 500; }
+.is-invalid { border-color: var(--danger-color); }
+
+/* --- 6. BUTTONS --- */
+button, .btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: var(--panel-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.2s ease;
+}
+button:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-1px); }
+
+.btn-primary { background: var(--accent-color); color: var(--bg-gradient); border: none; }
+.btn-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+[data-theme="dark"] .btn-primary { color: #0f172a; } 
+
+.btn-secondary { background: transparent; }
+.btn-secondary:hover { border-color: var(--text-primary); }
+
+.list-controls { margin-bottom: 20px; display: flex; gap: 10px; }
+
+#btn-theme-toggle {
+    width: 44px; height: 44px; border-radius: 50%;
+    padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; background: var(--input-bg); border: 1px solid var(--input-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Badges Classes */
-.status-want-to-read { background-color: var(--badge-want-to-read-bg); color: var(--badge-want-to-read-text); }
-.status-reading { background-color: var(--badge-reading-bg); color: var(--badge-reading-text); }
-.status-paused { background-color: var(--badge-paused-bg); color: var(--badge-paused-text); }
-.status-read { background-color: var(--badge-read-bg); color: var(--badge-read-text); }
-.status-abandoned { background-color: var(--badge-abandoned-bg); color: var(--badge-abandoned-text); }
+.btn-small-edit, .btn-small-del, .btn-readings, .btn-edit-book, .btn-remove {
+    padding: 6px 12px; font-size: 0.8rem; margin-right: 6px; border-radius: 6px; font-weight: 600;
+}
+.btn-small-del, .btn-remove { color: var(--danger-color); border-color: rgba(220, 38, 38, 0.3); }
+.btn-small-del:hover, .btn-remove:hover { background: var(--danger-color); color: #fff; border-color: var(--danger-color); }
+
+/* --- 7. BOOK LIST & CARDS --- */
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+.book-card {
+    padding: 20px;
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+.book-card:hover { transform: translateY(-4px); border-color: var(--text-primary); }
+.book-card h3 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px; margin: 12px 0 6px 0; line-height: 1.2; }
+.book-card p { color: var(--text-secondary); margin-bottom: 6px; font-size: 0.9rem; font-weight: 300; }
+.card-actions { margin-top: 16px; border-top: var(--panel-border); padding-top: 16px; }
+
+/* --- 8. STATUS BADGES --- */
+.status-badge, .status-pill {
+    padding: 4px 12px; border-radius: 6px;
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    display: inline-block; border: var(--panel-border); cursor: default; appearance: none;
+    backdrop-filter: blur(4px);
+}
+select.status-badge { cursor: pointer; text-align: left; padding-right: 24px; }
+.status-want-to-read { background: var(--badge-want); color: var(--text-want); }
+.status-reading { background: var(--badge-reading); color: var(--text-reading); }
+.status-paused { background: var(--badge-paused); color: var(--text-paused); }
+.status-read { background: var(--badge-read); color: var(--text-read); }
+.status-abandoned { background: var(--badge-abandoned); color: var(--text-abandoned); }
+
+/* --- 9. MODALS --- */
+.custom-modal {
+    margin: auto; border: none; background: transparent;
+    max-width: 540px; width: 95%; max-height: 90vh;
+    display: flex; flex-direction: column; outline: none;
+}
+.large-modal { max-width: 800px; }
+.custom-modal::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+.modal-content {
+    display: flex; flex-direction: column; max-height: 90vh;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: var(--panel-border); flex-shrink: 0; }
+.modal-header h3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.5px; margin: 0; }
+.modal-body { padding: 20px 24px; overflow-y: auto; }
+.btn-close-modal { background: transparent; border: none; font-size: 1.8rem; color: var(--text-secondary); padding: 0 4px; font-weight: 300; transition: color 0.2s; }
+.btn-close-modal:hover { color: var(--danger-color); transform: scale(1.1); }
+
+/* --- 10. TABLES --- */
+.table-container { overflow-x: auto; margin-top: 12px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: var(--panel-border); }
+.data-table th { font-weight: 600; color: var(--text-secondary); cursor: pointer; white-space: nowrap; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.data-table th:hover { color: var(--text-primary); }
+.data-table tr { transition: background 0.2s; }
+.data-table tr:hover td { background: rgba(255, 255, 255, 0.08); }
+
+/* Reading History inside modal */
+.readings-history-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.reading-history-item { background: var(--input-bg); padding: 16px; border-radius: 8px; border: 1px solid var(--input-border); }
+.reading-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
