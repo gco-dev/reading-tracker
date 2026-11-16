@@ -17,10 +17,8 @@
     </header>
     
     <main>
-        <!-- SECTION 1: Form for New Book & Initial Reading -->
         <section class="add-book-section">
             <h2>Add New Book & Reading</h2>
-            
             <form id="form-new-book" novalidate>
                 <div class="form-group">
                     <input type="text" id="new-title" name="title" placeholder="Book Title *">
@@ -96,19 +94,16 @@
 
         <section class="library-section">
             <h2>My Book List <span id="book-counter" class="book-counter"></span></h2>
-            
             <div class="list-controls">
                 <button type="button" id="btn-sort">Sort: Newest First</button>
                 <button type="button" id="btn-reset" class="btn-reset">Reset Data</button>
             </div>
-
             <div id="book-list" class="book-grid"></div>
         </section>
     </main>
 
-    <!-- ================= MODAIS DA APLICAÇÃO ================= -->
+    <!-- ================= MODALS ================= -->
 
-    <!-- MODAL 1: Book Edit (FR-02) -->
     <dialog id="book-edit-modal" class="custom-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -145,7 +140,6 @@
         </div>
     </dialog>
 
-    <!-- MODAL 2: Author Management (FR-01) -->
     <dialog id="author-manager-modal" class="custom-modal large-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -179,7 +173,6 @@
         </div>
     </dialog>
 
-    <!-- MODAL 3: Reading Log Table (FR-05) -->
     <dialog id="reading-log-modal" class="custom-modal large-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -205,7 +198,6 @@
         </div>
     </dialog>
 
-    <!-- MODAL 4: Book Reading History & Add/Edit Reading (FR-03) -->
     <dialog id="reading-modal" class="reading-modal custom-modal">
         <div class="modal-content">
             <div class="modal-header">
