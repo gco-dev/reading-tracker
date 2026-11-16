@@ -1,95 +1,99 @@
 /* =========================================
    File: css/style.css
-   Ex-Libris | Adaptive High-Contrast Glassmorphism
+   Ex-Libris | High-Contrast Light & AMOLED Dark
    ========================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* --- 1. THEME VARIABLES (LIGHT & DARK) --- */
+/* --- 1. THEME VARIABLES (LIGHT & AMOLED DARK) --- */
 :root {
-    /* Light Mode: Soft atmospheric orbs + crisp outlined surfaces */
-    --bg-base: #eef2ff;
+    /* Light Mode: Crisp slate outlines + distinct surface hierarchy */
+    --bg-base: #cbd5e1;
     --bg-gradient:
-        radial-gradient(circle at 12% 18%, rgba(129, 140, 248, 0.35) 0%, transparent 42%),
-        radial-gradient(circle at 88% 22%, rgba(244, 114, 182, 0.26) 0%, transparent 40%),
-        radial-gradient(circle at 75% 82%, rgba(56, 189, 248, 0.28) 0%, transparent 45%),
-        linear-gradient(135deg, #e0e7ff 0%, #f8fafc 50%, #e2e8f0 100%);
+        radial-gradient(circle at 12% 15%, rgba(99, 102, 241, 0.28) 0%, transparent 42%),
+        radial-gradient(circle at 88% 20%, rgba(236, 72, 153, 0.20) 0%, transparent 40%),
+        radial-gradient(circle at 75% 85%, rgba(14, 165, 233, 0.24) 0%, transparent 45%),
+        linear-gradient(135deg, #cbd5e1 0%, #e2e8f0 50%, #cbd5e1 100%);
 
-    --panel-bg: rgba(255, 255, 255, 0.72);
-    --card-bg: rgba(255, 255, 255, 0.82);
-    --modal-bg: rgba(255, 255, 255, 0.90);
+    --panel-bg: rgba(248, 250, 252, 0.76);
+    --card-bg: #ffffff;
+    --modal-bg: rgba(255, 255, 255, 0.97);
 
-    --border-subtle: rgba(15, 23, 42, 0.12);
-    --border-interactive: rgba(15, 23, 42, 0.22);
+    --border-subtle: rgba(15, 23, 42, 0.25);
+    --border-interactive: rgba(15, 23, 42, 0.42);
     --panel-border: 1px solid var(--border-subtle);
 
     --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --backdrop-blur: blur(16px);
-    --panel-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-    --card-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+    --panel-shadow: 0 10px 30px rgba(15, 23, 42, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    --card-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 
     --accent-color: #0f172a;
-    --accent-text: #f8fafc;
+    --accent-text: #ffffff;
     --accent-hover: #1e293b;
     --danger-color: #dc2626;
-    --danger-border: rgba(220, 38, 38, 0.38);
+    --danger-border: rgba(220, 38, 38, 0.55);
 
-    --input-bg: rgba(255, 255, 255, 0.85);
-    --input-border: rgba(15, 23, 42, 0.20);
-    --input-focus: rgba(15, 23, 42, 0.10);
-    --btn-bg: rgba(255, 255, 255, 0.75);
-    --btn-hover-bg: rgba(15, 23, 42, 0.06);
+    --input-bg: #f1f5f9;
+    --input-disabled-bg: #e2e8f0;
+    --input-border: rgba(15, 23, 42, 0.36);
+    --input-focus: rgba(15, 23, 42, 0.14);
+    --btn-bg: #ffffff;
+    --btn-hover-bg: #e2e8f0;
+    --table-head-bg: #e2e8f0;
 
     /* Badges - Light Mode */
-    --badge-want: #f1f5f9; --text-want: #0f172a;
-    --badge-read: #dcfce7; --text-read: #166534;
-    --badge-reading: #fef08a; --text-reading: #854d0e;
-    --badge-paused: #ffedd5; --text-paused: #9a3412;
-    --badge-abandoned: #fee2e2; --text-abandoned: #991b1b;
+    --badge-want: #e2e8f0; --text-want: #0f172a;
+    --badge-read: #dcfce7; --text-read: #14532d;
+    --badge-reading: #fef08a; --text-reading: #713f12;
+    --badge-paused: #ffedd5; --text-paused: #7c2d12;
+    --badge-abandoned: #fee2e2; --text-abandoned: #7f1d1d;
 }
 
 [data-theme="dark"] {
-    /* Dark Mode: Deep obsidian base + luminous edges */
-    --bg-base: #060913;
+    /* Dark Mode: True AMOLED #000000 Base + Neutral Carbon Surfaces */
+    --bg-base: #000000;
     --bg-gradient:
-        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.20) 0%, transparent 38%),
-        radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.20) 0%, transparent 42%),
-        radial-gradient(circle at 50% 85%, rgba(14, 165, 233, 0.16) 0%, transparent 45%),
-        linear-gradient(135deg, #090d16 0%, #111827 50%, #05070e 100%);
+        radial-gradient(circle at 14% 12%, rgba(56, 189, 248, 0.11) 0%, transparent 34%),
+        radial-gradient(circle at 86% 22%, rgba(168, 85, 247, 0.10) 0%, transparent 36%),
+        radial-gradient(circle at 50% 90%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        linear-gradient(180deg, #000000 0%, #000000 100%);
 
-    --panel-bg: rgba(15, 23, 42, 0.68);
-    --card-bg: rgba(30, 41, 59, 0.55);
-    --modal-bg: rgba(15, 23, 42, 0.92);
+    --panel-bg: rgba(11, 11, 13, 0.86);
+    --card-bg: #141417;
+    --modal-bg: rgba(12, 12, 15, 0.96);
 
-    --border-subtle: rgba(255, 255, 255, 0.12);
-    --border-interactive: rgba(255, 255, 255, 0.24);
+    --border-subtle: rgba(255, 255, 255, 0.15);
+    --border-interactive: rgba(255, 255, 255, 0.28);
     --panel-border: 1px solid var(--border-subtle);
 
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
     --backdrop-blur: blur(18px);
-    --panel-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    --card-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    --panel-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
 
-    --accent-color: #f8fafc;
-    --accent-text: #0f172a;
-    --accent-hover: #e2e8f0;
+    --accent-color: #fafafa;
+    --accent-text: #000000;
+    --accent-hover: #e4e4e7;
     --danger-color: #f87171;
-    --danger-border: rgba(248, 113, 113, 0.40);
+    --danger-border: rgba(248, 113, 113, 0.45);
 
-    --input-bg: rgba(2, 6, 23, 0.60);
-    --input-border: rgba(255, 255, 255, 0.18);
+    --input-bg: #050506;
+    --input-disabled-bg: #0d0d10;
+    --input-border: rgba(255, 255, 255, 0.22);
     --input-focus: rgba(255, 255, 255, 0.16);
-    --btn-bg: rgba(255, 255, 255, 0.06);
-    --btn-hover-bg: rgba(255, 255, 255, 0.14);
+    --btn-bg: #18181b;
+    --btn-hover-bg: #27272a;
+    --table-head-bg: #18181b;
 
     /* Badges - Dark Mode */
-    --badge-want: rgba(255, 255, 255, 0.14); --text-want: #f8fafc;
-    --badge-read: rgba(20, 83, 45, 0.85); --text-read: #bbf7d0;
-    --badge-reading: rgba(113, 63, 18, 0.85); --text-reading: #fef08a;
-    --badge-paused: rgba(124, 45, 18, 0.85); --text-paused: #ffedd5;
-    --badge-abandoned: rgba(127, 29, 29, 0.85); --text-abandoned: #fecaca;
+    --badge-want: #27272a; --text-want: #fafafa;
+    --badge-read: rgba(20, 83, 45, 0.88); --text-read: #bbf7d0;
+    --badge-reading: rgba(113, 63, 18, 0.88); --text-reading: #fef08a;
+    --badge-paused: rgba(124, 45, 18, 0.88); --text-paused: #ffedd5;
+    --badge-abandoned: rgba(127, 29, 29, 0.88); --text-abandoned: #fecaca;
 }
 
 /* --- 2. GLOBAL RESET & BASE --- */
@@ -110,7 +114,7 @@ body {
     padding: clamp(12px, 2.5vw, 24px) clamp(12px, 3vw, 40px);
     font-size: 14px;
     line-height: 1.5;
-    transition: background-color 0.35s ease, color 0.35s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* --- 3. LAYOUT & OUTLINED GLASS SURFACES --- */
@@ -157,7 +161,7 @@ h2 {
 }
 
 .book-counter {
-    font-weight: 400;
+    font-weight: 500;
     color: var(--text-secondary);
     font-size: 0.95rem;
 }
@@ -218,6 +222,7 @@ hr {
     border-radius: 50%;
     background: var(--btn-bg);
     border: 1px solid var(--border-interactive);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -289,21 +294,25 @@ input::placeholder, textarea::placeholder {
 input:hover:not(:disabled),
 select:hover:not(:disabled),
 textarea:hover:not(:disabled) {
-    border-color: var(--border-interactive);
+    border-color: var(--text-primary);
 }
 
 input:focus, select:focus, textarea:focus {
+    background: var(--card-bg);
     border-color: var(--text-primary);
     box-shadow: 0 0 0 3px var(--input-focus);
 }
 
 input:disabled, select:disabled {
-    opacity: 0.45;
+    background: var(--input-disabled-bg);
+    border-style: dashed;
+    color: var(--text-secondary);
+    opacity: 0.75;
     cursor: not-allowed;
 }
 
 select option {
-    background-color: var(--bg-base);
+    background-color: var(--card-bg);
     color: var(--text-primary);
 }
 
@@ -312,7 +321,7 @@ select option {
     color: var(--danger-color);
     font-size: 0.8rem;
     min-height: 1.1em;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .field-error:empty {
@@ -336,6 +345,7 @@ button, .btn {
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
@@ -358,7 +368,7 @@ button:active {
 .btn-primary:hover {
     background: var(--accent-hover);
     border-color: var(--accent-hover);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .btn-secondary {
@@ -407,7 +417,7 @@ button:active {
 .btn-small-del, .btn-remove {
     color: var(--danger-color);
     border-color: var(--danger-border);
-    background: transparent;
+    background: var(--btn-bg);
 }
 
 .btn-small-del:hover, .btn-remove:hover {
@@ -509,7 +519,7 @@ select.status-badge {
     margin: auto;
     border: none;
     background: transparent;
-    color: var(--text-primary); /* Overrides browser default CanvasText in dark mode */
+    color: var(--text-primary);
     max-width: 560px;
     width: min(94vw, 560px);
     max-height: 90vh;
@@ -522,7 +532,7 @@ select.status-badge {
 }
 
 .custom-modal::backdrop {
-    background: rgba(2, 6, 23, 0.55);
+    background: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
@@ -586,6 +596,7 @@ select.status-badge {
 .btn-close-modal {
     background: transparent;
     border: 1px solid transparent;
+    box-shadow: none;
     font-size: 1.6rem;
     line-height: 1;
     color: var(--text-secondary);
@@ -606,6 +617,7 @@ select.status-badge {
     margin-top: 8px;
     border: 1px solid var(--border-subtle);
     border-radius: 10px;
+    background: var(--card-bg);
 }
 
 .data-table {
@@ -629,7 +641,7 @@ select.status-badge {
 .data-table th {
     font-weight: 600;
     color: var(--text-secondary);
-    background: var(--btn-bg);
+    background: var(--table-head-bg);
     cursor: pointer;
     white-space: nowrap;
     font-size: 0.8rem;
@@ -658,7 +670,7 @@ select.status-badge {
 }
 
 .reading-history-item {
-    background: var(--card-bg);
+    background: var(--input-bg);
     padding: 14px 16px;
     border-radius: 10px;
     border: 1px solid var(--border-subtle);
