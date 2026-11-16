@@ -99,7 +99,6 @@ async function populateAuthorDropdown() {
 }
 
 async function renderBooks() {
-    // OPTIMIZATION: Fetch all primary data concurrently
     const [books, authors, themes, readings] = await Promise.all([
         getBooks(), getAuthors(), getThemes(), getReadings()
     ]);
@@ -168,6 +167,18 @@ async function processThemesInput(themeStr) {
     return themeIds;
 }
 
+function resetModalForm(bookId) {
+    const modalForm = document.getElementById('form-modal-reading');
+    modalForm.reset();
+    clearFormErrors(modalForm);
+    document.getElementById('modal-book-id').value = bookId;
+    document.getElementById('modal-reading-id').value = '';
+    document.getElementById('modal-form-title').textContent = 'Log New Reading / Re-read';
+    document.getElementById('btn-save-modal-reading').textContent = 'Add Reading';
+    document.getElementById('btn-cancel-edit').style.display = 'none';
+    modalForm.querySelector('[name="status"]').dispatchEvent(new Event('change'));
+}
+
 async function renderModalReadings(bookId) {
     const bookReadings = await getReadingsByBookId(bookId);
     const historyListEl = document.getElementById('modal-readings-list');
@@ -191,6 +202,19 @@ async function renderModalReadings(bookId) {
             ${r.recommendedBy ? `<p><strong>Rec. by:</strong> ${escapeHTML(r.recommendedBy)}</p>` : ''}
             ${r.notes ? `<p><strong>Notes:</strong> ${escapeHTML(r.notes)}</p>` : ''}
         </div>`).join('');
+}
+
+async function openReadingModal(bookId) {
+    const books = await getBooks();
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+
+    const modal = document.getElementById('reading-modal');
+    document.getElementById('modal-book-title').textContent = `Readings: ${book.title}`;
+    
+    resetModalForm(book.id);
+    await renderModalReadings(book.id);
+    modal.showModal();
 }
 
 async function renderAuthorTable() {
@@ -240,28 +264,28 @@ function setupEventListeners() {
     if(formNewBook) attachReadingWorkflowBehavior(formNewBook);
     if(formReading) attachReadingWorkflowBehavior(formReading);
 
-    // Header buttons
     document.getElementById('btn-manage-authors')?.addEventListener('click', async () => {
         await renderAuthorTable();
         document.getElementById('author-manager-modal').showModal();
     });
+    
     document.getElementById('btn-view-log')?.addEventListener('click', async () => {
         await renderReadingLogTable();
         document.getElementById('reading-log-modal').showModal();
     });
     
-    // Grid buttons
     document.getElementById('btn-sort')?.addEventListener('click', (e) => {
         currentSort = currentSort === 'recent' ? 'title' : 'recent';
         e.target.textContent = currentSort === 'recent' ? 'Sort: Newest First' : 'Sort: A-Z';
         renderBooks();
     });
+    
     document.getElementById('btn-reset')?.addEventListener('click', async () => {
         if (confirm('Reset all data back to seed.json?')) { await resetData(); await refreshUI(); }
     });
+    
     document.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', e => e.target.closest('dialog').close()));
 
-    // Forms & Table actions
     setupAuthorForm();
     setupBookEditForm();
     setupMainForm(formNewBook);
@@ -398,19 +422,14 @@ function setupReadingModalForm(form) {
 
         editId ? await updateReading(editId, draft) : await saveReading(draft);
         
-        form.reset(); document.getElementById('modal-reading-id').value = '';
-        form.querySelector('[name="status"]').dispatchEvent(new Event('change'));
-        document.getElementById('btn-save-modal-reading').textContent = 'Add Reading';
-        document.getElementById('btn-cancel-edit').style.display = 'none';
-        
-        await renderModalReadings(bookId); await renderBooks();
+        resetModalForm(bookId);
+        await renderModalReadings(bookId); 
+        await renderBooks();
     });
 
     document.getElementById('btn-cancel-edit')?.addEventListener('click', () => {
-        form.reset(); document.getElementById('modal-reading-id').value = '';
-        form.querySelector('[name="status"]').dispatchEvent(new Event('change'));
-        document.getElementById('btn-save-modal-reading').textContent = 'Add Reading';
-        document.getElementById('btn-cancel-edit').style.display = 'none';
+        const bookId = document.getElementById('modal-book-id').value;
+        resetModalForm(bookId);
     });
 }
 
@@ -458,6 +477,7 @@ function setupDelegatedListeners() {
     document.getElementById('book-list')?.addEventListener('click', async (e) => {
         const bookId = parseInt(e.target.dataset.bookId, 10);
         if (e.target.matches('.btn-readings')) await openReadingModal(bookId);
+        
         if (e.target.matches('.btn-edit-book')) {
             const [books, themes] = await Promise.all([getBooks(), getThemes()]);
             const book = books.find(b => b.id === bookId);
