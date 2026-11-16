@@ -10,6 +10,11 @@
     <header>
         <h1>Ex-Libris</h1>
         <p class="subtitle">Your personal literary collection</p>
+        <div class="header-actions">
+            <!-- Botões do Cabeçalho (FR-01 e FR-05) -->
+            <button type="button" id="btn-manage-authors" class="btn-secondary">Manage Authors</button>
+            <button type="button" id="btn-view-log" class="btn-secondary">Reading Log (Table)</button>
+        </div>
     </header>
     
     <main>
@@ -19,54 +24,80 @@
             
             <form id="form-new-book" novalidate>
                 <!-- Book Entity Fields -->
-                <input type="text" id="new-title" name="title" placeholder="Book Title *">
-                <input type="number" id="new-year" name="publicationYear" placeholder="Publication Year (e.g. 2024 or -500)">
+                <div class="form-group">
+                    <input type="text" id="new-title" name="title" placeholder="Book Title *">
+                    <span class="field-error" data-error-for="title"></span>
+                </div>
                 
-                <!-- Author Selection or Quick Creation -->
-                <select id="new-author" name="authorId">
-                    <option value="">Select Existing Author...</option>
-                </select>
-                <input type="text" id="typed-author" name="typedAuthor" placeholder="Or type a new author">
+                <div class="form-group">
+                    <input type="number" id="new-year" name="publicationYear" placeholder="Pub. Year (e.g. 2024 or -500)">
+                    <span class="field-error" data-error-for="publicationYear"></span>
+                </div>
+                
+                <div class="form-group">
+                    <select id="new-author" name="authorId">
+                        <option value="">Select Existing Author...</option>
+                    </select>
+                    <input type="text" id="typed-author" name="typedAuthor" placeholder="Or type a new author">
+                    <span class="field-error" data-error-for="authorName"></span>
+                </div>
 
-                <!-- Book Literary Form (Controlled values matching seed.json) -->
-                <select id="new-form" name="form">
-                    <option value="">Select Literary Form...</option>
-                    <option value="Novel">Novel</option>
-                    <option value="Novella">Novella</option>
-                    <option value="Short Story">Short Story</option>
-                    <option value="Short Story Collection">Short Story Collection</option>
-                    <option value="Essay">Essay</option>
-                    <option value="Play">Play</option>
-                    <option value="Diary">Diary</option>
-                    <option value="Treatise">Treatise</option>
-                    <option value="Graphic Novel">Graphic Novel</option>
-                </select>
+                <div class="form-group">
+                    <select id="new-form" name="form">
+                        <option value="">Select Literary Form...</option>
+                        <option value="Novel">Novel</option>
+                        <option value="Novella">Novella</option>
+                        <option value="Short Story">Short Story</option>
+                        <option value="Short Story Collection">Short Story Collection</option>
+                        <option value="Essay">Essay</option>
+                        <option value="Play">Play</option>
+                        <option value="Diary">Diary</option>
+                        <option value="Treatise">Treatise</option>
+                        <option value="Graphic Novel">Graphic Novel</option>
+                    </select>
+                </div>
+                
+                <!-- FR-02: Temas separados por vírgula -->
+                <div class="form-group">
+                    <input type="text" id="new-themes" name="themes" placeholder="Themes (comma separated)">
+                </div>
 
                 <!-- Reading Entity Fields -->
-                <select id="new-status" name="status">
-                    <option value="">Reading Status *...</option>
-                    <option value="Want to read">Want to read</option>
-                    <option value="Reading">Reading</option>
-                    <option value="Paused">Paused</option>
-                    <option value="Read">Read</option>
-                    <option value="Abandoned">Abandoned</option>
-                </select>
+                <div class="form-group">
+                    <select id="new-status" name="status">
+                        <option value="">Reading Status *...</option>
+                        <option value="Want to read">Want to read</option>
+                        <option value="Reading">Reading</option>
+                        <option value="Paused">Paused</option>
+                        <option value="Read">Read</option>
+                        <option value="Abandoned">Abandoned</option>
+                    </select>
+                    <span class="field-error" data-error-for="status"></span>
+                </div>
 
-                <input type="number" id="new-year-read" name="yearRead" placeholder="Year Read (if Read)">
-                <input type="number" id="new-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
+                <div class="inline-group">
+                    <div>
+                        <input type="number" id="new-year-read" name="yearRead" placeholder="Year Read (if Read)">
+                        <span class="field-error" data-error-for="yearRead"></span>
+                    </div>
+                    <div>
+                        <input type="number" id="new-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
+                        <span class="field-error" data-error-for="grade"></span>
+                    </div>
+                </div>
 
-                <select id="new-priority" name="priority">
-                    <option value="">Priority (if Want to read)...</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                </select>
+                <div class="form-group">
+                    <select id="new-priority" name="priority">
+                        <option value="">Priority (if Want to read)...</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                    <span class="field-error" data-error-for="priority"></span>
+                </div>
 
                 <button type="submit" id="btn-save">Save Entry</button>
             </form>
-
-            <!-- Container for FR-06 Validation Errors -->
-            <div id="error-messages" class="error-container" aria-live="polite"></div>
         </section>
 
         <hr>
@@ -84,50 +115,156 @@
         </section>
     </main>
 
-    <!-- MODAL: Book Reading History & Add New Reading (FR-03) -->
-    <dialog id="reading-modal" class="reading-modal">
+    <!-- ================= MODAIS DA APLICAÇÃO ================= -->
+
+    <!-- MODAL 1: Book Edit (FR-02) -->
+    <dialog id="book-edit-modal" class="custom-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Book</h3>
+                <button type="button" class="btn-close-modal" aria-label="Close modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit-book" novalidate>
+                    <input type="hidden" id="edit-book-id" name="bookId">
+                    <div class="form-group">
+                        <input type="text" id="edit-book-title" name="title" placeholder="Book Title *">
+                        <span class="field-error" data-error-for="title"></span>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="edit-book-year" name="publicationYear" placeholder="Pub. Year">
+                        <span class="field-error" data-error-for="publicationYear"></span>
+                    </div>
+                    <div class="form-group">
+                        <select id="edit-book-form" name="form">
+                            <option value="">Select Literary Form...</option>
+                            <option value="Novel">Novel</option>
+                            <option value="Novella">Novella</option>
+                            <option value="Short Story">Short Story</option>
+                            <option value="Essay">Essay</option>
+                            <option value="Play">Play</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- MODAL 2: Author Management (FR-01) -->
+    <dialog id="author-manager-modal" class="custom-modal large-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Manage Authors</h3>
+                <button type="button" class="btn-close-modal" aria-label="Close modal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-manage-author" novalidate>
+                    <input type="hidden" id="manage-author-id" name="authorId">
+                    <div class="inline-group">
+                        <input type="text" id="manage-author-name" name="authorName" placeholder="Author Name *">
+                        <button type="submit" id="btn-save-author" class="btn-primary">Add/Update</button>
+                        <button type="button" id="btn-cancel-author-edit" class="btn-secondary" style="display:none;">Cancel</button>
+                    </div>
+                    <span class="field-error" data-error-for="authorName"></span>
+                </form>
+                <hr>
+                <div class="table-container">
+                    <table class="data-table" id="author-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- MODAL 3: Reading Log Table (FR-05) -->
+    <dialog id="reading-log-modal" class="custom-modal large-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Reading Log</h3>
+                <button type="button" class="btn-close-modal" aria-label="Close modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="table-container">
+                    <table class="data-table" id="log-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="title">Title ↕</th>
+                                <th data-sort="authors">Authors ↕</th>
+                                <th data-sort="status">Status ↕</th>
+                                <th data-sort="yearRead">Year Read ↕</th>
+                                <th data-sort="grade">Grade ↕</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- MODAL 4: Book Reading History & Add/Edit Reading (FR-03) -->
+    <dialog id="reading-modal" class="reading-modal custom-modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-book-title">Book Readings</h3>
-                <button type="button" id="btn-close-modal" class="btn-close-modal" aria-label="Close modal">×</button>
+                <button type="button" id="btn-close-modal-readings" class="btn-close-modal" aria-label="Close modal">×</button>
             </div>
-
             <div class="modal-body">
                 <h4>Reading History</h4>
                 <div id="modal-readings-list" class="readings-history-list"></div>
-
                 <hr>
-
-                <h4>Log New Reading / Re-read</h4>
+                <h4 id="modal-form-title">Log New Reading / Re-read</h4>
                 <form id="form-modal-reading" novalidate>
                     <input type="hidden" id="modal-book-id" name="bookId">
+                    <input type="hidden" id="modal-reading-id" name="readingId">
 
-                    <select id="modal-status" name="status">
-                        <option value="">Reading Status *...</option>
-                        <option value="Want to read">Want to read</option>
-                        <option value="Reading">Reading</option>
-                        <option value="Paused">Paused</option>
-                        <option value="Read">Read</option>
-                        <option value="Abandoned">Abandoned</option>
-                    </select>
-
-                    <input type="number" id="modal-year-read" name="yearRead" placeholder="Year Read (if Read)">
-                    <input type="number" id="modal-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
-
-                    <select id="modal-priority" name="priority">
-                        <option value="">Priority (if Want to read)...</option>
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                    </select>
-
-                    <input type="text" id="modal-recommended-by" name="recommendedBy" placeholder="Recommended by (optional)">
-                    <textarea id="modal-notes" name="notes" rows="2" placeholder="Reading notes (optional)"></textarea>
-
-                    <button type="submit" id="btn-save-modal-reading">Add Reading</button>
+                    <div class="form-group">
+                        <select id="modal-status" name="status">
+                            <option value="">Reading Status *...</option>
+                            <option value="Want to read">Want to read</option>
+                            <option value="Reading">Reading</option>
+                            <option value="Paused">Paused</option>
+                            <option value="Read">Read</option>
+                            <option value="Abandoned">Abandoned</option>
+                        </select>
+                        <span class="field-error" data-error-for="status"></span>
+                    </div>
+                    
+                    <div class="inline-group">
+                        <div>
+                            <input type="number" id="modal-year-read" name="yearRead" placeholder="Year Read (if Read)">
+                            <span class="field-error" data-error-for="yearRead"></span>
+                        </div>
+                        <div>
+                            <input type="number" id="modal-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
+                            <span class="field-error" data-error-for="grade"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <select id="modal-priority" name="priority">
+                            <option value="">Priority (if Want to read)...</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                        <span class="field-error" data-error-for="priority"></span>
+                    </div>
+                    
+                    <div class="inline-group">
+                        <button type="submit" id="btn-save-modal-reading" class="btn-primary">Add Reading</button>
+                        <button type="button" id="btn-cancel-edit" class="btn-secondary" style="display: none;">Cancel Edit</button>
+                    </div>
                 </form>
-
-                <div id="modal-error-messages" class="error-container" aria-live="polite"></div>
             </div>
         </div>
     </dialog>
