@@ -10,9 +10,9 @@
 <body>
     <header>
         <!-- Theme Toggle Button -->
-<button id="btn-theme-toggle" class="btn-theme" aria-label="Toggle theme" title="Switch to Dark Mode">
-    🌙
-</button>
+        <button type="button" id="btn-theme-toggle" class="btn-theme" aria-label="Toggle theme" title="Switch to Dark Mode">
+            🌙
+        </button>
         <h1>Ex-Libris</h1>
         <p class="subtitle">Your personal literary collection</p>
         <div class="header-actions">
@@ -23,76 +23,81 @@
     
     <main>
         <section class="add-book-section">
-            <h2>Add New Book & Reading</h2>
-            <form id="form-new-book" novalidate>
-                <div class="form-group">
-                    <input type="text" id="new-title" name="title" placeholder="Book Title *">
-                    <span class="field-error" data-error-for="title"></span>
-                </div>
-                
-                <div class="form-group">
-                    <input type="number" id="new-year" name="publicationYear" placeholder="Pub. Year (e.g. 2024 or -500)">
-                    <span class="field-error" data-error-for="publicationYear"></span>
-                </div>
-                
-                <div class="form-group">
-                    <select id="new-author" name="authorId">
-                        <option value="">Select Existing Author...</option>
-                    </select>
-                    <input type="text" id="typed-author" name="typedAuthor" placeholder="Or type a new author">
-                    <span class="field-error" data-error-for="authorName"></span>
-                </div>
-
-                <div class="form-group">
-                    <select id="new-form" name="form">
-                        <option value="">Select Literary Form...</option>
-                        <option value="Novel">Novel</option>
-                        <option value="Novella">Novella</option>
-                        <option value="Short Story">Short Story</option>
-                        <option value="Essay">Essay</option>
-                        <option value="Play">Play</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <input type="text" id="new-themes" name="themes" placeholder="Themes (comma separated)">
-                </div>
-
-                <div class="form-group">
-                    <select id="new-status" name="status">
-                        <option value="">Reading Status *...</option>
-                        <option value="Want to read">Want to read</option>
-                        <option value="Reading">Reading</option>
-                        <option value="Paused">Paused</option>
-                        <option value="Read">Read</option>
-                        <option value="Abandoned">Abandoned</option>
-                    </select>
-                    <span class="field-error" data-error-for="status"></span>
-                </div>
-
-                <div class="inline-group">
-                    <div>
-                        <input type="number" id="new-year-read" name="yearRead" placeholder="Year Read (if Read)">
-                        <span class="field-error" data-error-for="yearRead"></span>
+            <details>
+                <summary class="accordion-header">
+                    <h2>Add New Book & Reading</h2>
+                    <span class="custom-caret" aria-hidden="true"></span>
+                </summary>
+                <form id="form-new-book" novalidate>
+                    <div class="form-group">
+                        <input type="text" id="new-title" name="title" placeholder="Book Title *">
+                        <span class="field-error" data-error-for="title"></span>
                     </div>
-                    <div>
-                        <input type="number" id="new-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
-                        <span class="field-error" data-error-for="grade"></span>
+                    
+                    <div class="form-group">
+                        <input type="number" id="new-year" name="publicationYear" placeholder="Pub. Year (e.g. 2024 or -500)">
+                        <span class="field-error" data-error-for="publicationYear"></span>
                     </div>
-                </div>
+                    
+                    <div class="form-group">
+                        <select id="new-author" name="authorId">
+                            <option value="">Select Existing Author...</option>
+                        </select>
+                        <input type="text" id="typed-author" name="typedAuthor" placeholder="Or type a new author">
+                        <span class="field-error" data-error-for="authorName"></span>
+                    </div>
 
-                <div class="form-group">
-                    <select id="new-priority" name="priority">
-                        <option value="">Priority (if Want to read)...</option>
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                    </select>
-                    <span class="field-error" data-error-for="priority"></span>
-                </div>
+                    <div class="form-group">
+                        <select id="new-form" name="form">
+                            <option value="">Select Literary Form...</option>
+                            <option value="Novel">Novel</option>
+                            <option value="Novella">Novella</option>
+                            <option value="Short Story">Short Story</option>
+                            <option value="Essay">Essay</option>
+                            <option value="Play">Play</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <input type="text" id="new-themes" name="themes" placeholder="Themes (comma separated)">
+                    </div>
 
-                <button type="submit" id="btn-save" class="btn-primary">Save Entry</button>
-            </form>
+                    <div class="form-group">
+                        <select id="new-status" name="status">
+                            <option value="">Reading Status *...</option>
+                            <option value="Want to read">Want to read</option>
+                            <option value="Reading">Reading</option>
+                            <option value="Paused">Paused</option>
+                            <option value="Read">Read</option>
+                            <option value="Abandoned">Abandoned</option>
+                        </select>
+                        <span class="field-error" data-error-for="status"></span>
+                    </div>
+
+                    <div class="inline-group">
+                        <div>
+                            <input type="number" id="new-year-read" name="yearRead" placeholder="Year Read (if Read)">
+                            <span class="field-error" data-error-for="yearRead"></span>
+                        </div>
+                        <div>
+                            <input type="number" id="new-grade" name="grade" step="0.5" placeholder="Grade (0.0 - 10.0)">
+                            <span class="field-error" data-error-for="grade"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <select id="new-priority" name="priority">
+                            <option value="">Priority (if Want to read)...</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                        <span class="field-error" data-error-for="priority"></span>
+                    </div>
+
+                    <button type="submit" id="btn-save" class="btn-primary">Save Entry</button>
+                </form>
+            </details>
         </section>
 
         <hr>
@@ -157,7 +162,7 @@
                     <div class="inline-group">
                         <input type="text" id="manage-author-name" name="authorName" placeholder="Author Name *">
                         <button type="submit" id="btn-save-author" class="btn-primary">Add/Update</button>
-                        <button type="button" id="btn-cancel-author-edit" class="btn-secondary" style="display:none;">Cancel</button>
+                        <button type="button" id="btn-cancel-author-edit" class="btn-secondary">Cancel</button>
                     </div>
                     <span class="field-error" data-error-for="authorName"></span>
                 </form>
@@ -260,7 +265,7 @@
                     
                     <div class="inline-group">
                         <button type="submit" id="btn-save-modal-reading" class="btn-primary">Add Reading</button>
-                        <button type="button" id="btn-cancel-edit" class="btn-secondary" style="display: none;">Cancel Edit</button>
+                        <button type="button" id="btn-cancel-edit" class="btn-secondary">Cancel Edit</button>
                     </div>
                 </form>
             </div>
@@ -268,8 +273,7 @@
     </dialog>
 
     <!-- Theme Logic (ES Module) -->
-<script type="module" src="js/theme.js"></script>
-
+    <script type="module" src="js/theme.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
