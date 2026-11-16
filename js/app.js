@@ -11,17 +11,18 @@ import {
     validateAuthor, validateBook, validateReading
 } from './validation.js';
 
-let currentSort = 'recent'; // Para a grid de livros principal
-let logSortCol = 'yearRead'; // FR-05: Ordenação padrão do Reading Log
-let logSortDir = 'desc';     // FR-05: Direção padrão do Reading Log
+let currentSort = 'recent';
+let logSortCol = 'yearRead';
+let logSortDir = 'desc';
 
-// =========================================================
-// 1. APPLICATION INITIALIZATION
-// =========================================================
 document.addEventListener('DOMContentLoaded', async () => {
-    await initializeStore();
-    await refreshUI();
-    setupEventListeners();
+    try {
+        await initializeStore();
+        await refreshUI();
+        setupEventListeners();
+    } catch (e) {
+        console.error("Erro critico na inicialização:", e);
+    }
 });
 
 async function refreshUI() {
@@ -37,7 +38,7 @@ function escapeHTML(str) {
 }
 
 // =========================================================
-// UI HELPERS & WORKFLOW (FR-04 / FR-06)
+// UI HELPERS & WORKFLOW
 // =========================================================
 function showFormErrors(formEl, errors) {
     clearFormErrors(formEl);
@@ -59,6 +60,7 @@ function attachReadingWorkflowBehavior(form) {
     const yearInput = form.querySelector('[name="yearRead"]');
     const gradeInput = form.querySelector('[name="grade"]');
     const prioritySelect = form.querySelector('[name="priority"]');
+    if(!statusSelect) return;
 
     function applyFieldState(status) {
         const allowsYearAndGrade = status === 'Read' || status === 'Abandoned';
@@ -76,11 +78,10 @@ function attachReadingWorkflowBehavior(form) {
         const nextAllowsYearAndGrade = nextStatus === 'Read' || nextStatus === 'Abandoned';
         const hasYearOrGrade = yearInput && gradeInput && (yearInput.value.trim() !== '' || gradeInput.value.trim() !== '');
 
-        // FR-04: Confirmação de perda de dados ao mudar status
         if (!nextAllowsYearAndGrade && hasYearOrGrade) {
             const ok = window.confirm(`Moving to "${nextStatus}" does not allow a Year Read or Grade. Clear those values?`);
             if (!ok) {
-                statusSelect.value = currentStatus; // Reverte UI
+                statusSelect.value = currentStatus;
                 return;
             }
             yearInput.value = '';
@@ -102,33 +103,34 @@ function attachReadingWorkflowBehavior(form) {
 async function populateAuthorDropdown() {
     const authors = await getAuthors();
     const dropdown = document.getElementById('new-author');
-
-    const sortedAuthors = [...authors].sort((a, b) => a.name.localeCompare(b.name));
-    const optionsHTML = sortedAuthors
-        .map(author => `<option value="${author.id}">${escapeHTML(author.name)}</option>`)
-        .join('');
-
+    if(!dropdown) return;
+    
+    const sortedAuthors = [...authors].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const optionsHTML = sortedAuthors.map(author => `<option value="${author.id}">${escapeHTML(author.name)}</option>`).join('');
     dropdown.innerHTML = `<option value="">Select Existing Author...</option>${optionsHTML}`;
 }
 
 async function renderBooks() {
     const books = await getBooks();
     const authors = await getAuthors();
+    const themes = await getThemes();
     const readings = await getReadings();
     const bookListEl = document.getElementById('book-list');
     const counterEl = document.getElementById('book-counter');
 
+    if (!bookListEl) return;
+
     if (books.length === 0) {
         bookListEl.innerHTML = '<p class="empty-message">No books registered in the collection yet.</p>';
-        counterEl.textContent = '(0 books)';
+        if(counterEl) counterEl.textContent = '(0 books)';
         return;
     }
 
     const booksToDisplay = [...books];
-    counterEl.textContent = `(${booksToDisplay.length} books)`;
+    if(counterEl) counterEl.textContent = `(${booksToDisplay.length} books)`;
 
     if (currentSort === 'title') {
-        booksToDisplay.sort((a, b) => a.title.localeCompare(b.title));
+        booksToDisplay.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     } else {
         booksToDisplay.sort((a, b) => b.id - a.id);
     }
@@ -136,8 +138,12 @@ async function renderBooks() {
     bookListEl.innerHTML = booksToDisplay.map(book => {
         let authorNames = 'Unknown Author';
         if (book.authorIds && book.authorIds.length > 0) {
-            const matched = book.authorIds.map(id => authors.find(a => a.id === id)?.name).filter(Boolean);
-            if (matched.length > 0) authorNames = matched.join(', ');
+            authorNames = book.authorIds.map(id => authors.find(a => a.id === id)?.name).filter(Boolean).join(', ');
+        }
+        
+        let themeNames = '';
+        if (book.themeIds && book.themeIds.length > 0) {
+            themeNames = book.themeIds.map(id => themes.find(t => t.id === id)?.name).filter(Boolean).join(', ');
         }
 
         const yearDisplay = book.publicationYear !== null && book.publicationYear !== undefined
@@ -158,6 +164,7 @@ async function renderBooks() {
             : `<span class="status-badge status-unknown">No Reading</span>`;
 
         const extraReadingDetails = [];
+        if (themeNames) extraReadingDetails.push(`<p><strong>Themes:</strong> ${escapeHTML(themeNames)}</p>`);
         if (latestReading?.yearRead) extraReadingDetails.push(`<p><strong>Year Read:</strong> ${latestReading.yearRead}</p>`);
         if (latestReading?.grade !== null && latestReading?.grade !== undefined) extraReadingDetails.push(`<p><strong>Grade:</strong> ${latestReading.grade}/10</p>`);
 
@@ -184,7 +191,6 @@ async function renderBooks() {
 // 3. MODALS RENDERING LOGIC
 // =========================================================
 
-// --- A. Reading History Modal (FR-03) ---
 async function openReadingModal(bookId) {
     const books = await getBooks();
     const book = books.find(b => b.id === bookId);
@@ -228,6 +234,8 @@ async function renderModalReadings(bookId) {
         if (reading.yearRead) details.push(`<p><strong>Year Read:</strong> ${reading.yearRead}</p>`);
         if (reading.grade !== null && reading.grade !== undefined) details.push(`<p><strong>Grade:</strong> ${reading.grade}/10</p>`);
         if (reading.priority) details.push(`<p><strong>Priority:</strong> ${escapeHTML(reading.priority)}</p>`);
+        if (reading.recommendedBy) details.push(`<p><strong>Rec. by:</strong> ${escapeHTML(reading.recommendedBy)}</p>`);
+        if (reading.notes) details.push(`<p><strong>Notes:</strong> ${escapeHTML(reading.notes)}</p>`);
 
         return `
             <div class="reading-history-item">
@@ -238,7 +246,7 @@ async function renderModalReadings(bookId) {
                     </span>
                     <div>
                         <button type="button" class="btn-small-edit btn-edit-reading" data-reading-id="${reading.id}">Edit</button>
-                        <button type="button" class="btn-small-del btn-delete-reading" data-reading-id="${reading.id}">Delete</button>
+                        <button type="button" class="btn-small-del btn-delete-reading" data-reading-id="${reading.id}">Del</button>
                     </div>
                 </div>
                 ${details.join('')}
@@ -247,7 +255,6 @@ async function renderModalReadings(bookId) {
     }).join('');
 }
 
-// --- B. Author Management Modal (FR-01) ---
 async function openAuthorModal() {
     const modal = document.getElementById('author-manager-modal');
     await renderAuthorTable();
@@ -256,8 +263,10 @@ async function openAuthorModal() {
 
 async function renderAuthorTable() {
     const authors = await getAuthors();
+    const sortedAuthors = [...authors].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    
     const tbody = document.querySelector('#author-table tbody');
-    tbody.innerHTML = authors.map(a => `
+    tbody.innerHTML = sortedAuthors.map(a => `
         <tr>
             <td>${a.id}</td>
             <td>${escapeHTML(a.name)}</td>
@@ -269,7 +278,6 @@ async function renderAuthorTable() {
     `).join('');
 }
 
-// --- C. Reading Log Table Modal (FR-05) ---
 async function openReadingLog() {
     const modal = document.getElementById('reading-log-modal');
     await renderReadingLogTable();
@@ -295,7 +303,6 @@ async function renderReadingLogTable() {
         };
     });
 
-    // Ordenação dinâmica ao clicar no cabeçalho
     logData.sort((a, b) => {
         let valA = a[logSortCol]; let valB = b[logSortCol];
         if (valA === valB) return a.id - b.id;
@@ -317,9 +324,9 @@ async function renderReadingLogTable() {
     `).join('');
 }
 
-// --- D. Book Edit Modal (FR-02) ---
 async function openBookEditModal(bookId) {
     const books = await getBooks();
+    const themes = await getThemes();
     const book = books.find(b => b.id === bookId);
     if (!book) return;
 
@@ -328,6 +335,9 @@ async function openBookEditModal(bookId) {
     form.elements['title'].value = book.title;
     form.elements['publicationYear'].value = book.publicationYear || '';
     form.elements['form'].value = book.form || '';
+    
+    let themeNames = (book.themeIds || []).map(id => themes.find(t => t.id === id)?.name).filter(Boolean).join(', ');
+    form.elements['themes'].value = themeNames;
     
     document.getElementById('book-edit-modal').showModal();
 }
@@ -339,33 +349,29 @@ function setupEventListeners() {
     const formNewBook = document.getElementById('form-new-book');
     const modalReadingForm = document.getElementById('form-modal-reading');
     
-    attachReadingWorkflowBehavior(formNewBook);
-    attachReadingWorkflowBehavior(modalReadingForm);
+    if(formNewBook) attachReadingWorkflowBehavior(formNewBook);
+    if(modalReadingForm) attachReadingWorkflowBehavior(modalReadingForm);
 
-    // --- Header Actions ---
-    document.getElementById('btn-manage-authors').addEventListener('click', openAuthorModal);
-    document.getElementById('btn-view-log').addEventListener('click', openReadingLog);
+    document.getElementById('btn-manage-authors')?.addEventListener('click', openAuthorModal);
+    document.getElementById('btn-view-log')?.addEventListener('click', openReadingLog);
     
-    // --- Grid Controls ---
-    document.getElementById('btn-sort').addEventListener('click', () => {
+    document.getElementById('btn-sort')?.addEventListener('click', () => {
         currentSort = currentSort === 'recent' ? 'title' : 'recent';
         document.getElementById('btn-sort').textContent = currentSort === 'recent' ? 'Sort: Newest First' : 'Sort: A-Z';
         renderBooks();
     });
 
-    document.getElementById('btn-reset').addEventListener('click', async () => {
+    document.getElementById('btn-reset')?.addEventListener('click', async () => {
         if (confirm('Are you sure you want to reset all data back to seed.json?')) {
             await resetData();
             await refreshUI();
         }
     });
 
-    // --- Modal Closers ---
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', (e) => e.target.closest('dialog').close());
     });
 
-    // --- Author Management Form (FR-01) ---
     const authorForm = document.getElementById('form-manage-author');
     if (authorForm) {
         authorForm.addEventListener('submit', async (e) => {
@@ -373,7 +379,7 @@ function setupEventListeners() {
             const id = authorForm.elements['authorId'].value;
             const name = authorForm.elements['authorName'].value;
             
-            const val = await validateAuthor({ name });
+            const val = await validateAuthor({ id: id ? parseInt(id) : null, name });
             if (!val.valid) { showFormErrors(authorForm, val.errors); return; }
             
             if (id) await updateAuthor(id, { name });
@@ -393,7 +399,7 @@ function setupEventListeners() {
             clearFormErrors(authorForm);
         });
 
-        document.querySelector('#author-table').addEventListener('click', async (e) => {
+        document.querySelector('#author-table')?.addEventListener('click', async (e) => {
             if (e.target.matches('.btn-small-edit')) {
                 const id = parseInt(e.target.dataset.editAuthor, 10);
                 const authors = await getAuthors();
@@ -425,7 +431,6 @@ function setupEventListeners() {
         });
     }
 
-    // --- Reading Log Sorting (FR-05) ---
     document.querySelectorAll('#log-table th[data-sort]').forEach(th => {
         th.addEventListener('click', async () => {
             const col = th.dataset.sort;
@@ -435,208 +440,219 @@ function setupEventListeners() {
         });
     });
 
-    // --- Book Edit Form (FR-02) ---
-    document.getElementById('form-edit-book').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const id = form.elements['bookId'].value;
-        const draft = {
-            title: form.elements['title'].value.trim(),
-            publicationYear: form.elements['publicationYear'].value ? parseInt(form.elements['publicationYear'].value) : null,
-            form: form.elements['form'].value || null
-        };
-        
-        const val = validateBook(draft);
-        if (!val.valid) { showFormErrors(form, val.errors); return; }
-        
-        await updateBook(id, draft);
-        document.getElementById('book-edit-modal').close();
-        await renderBooks();
-    });
+    const editBookForm = document.getElementById('form-edit-book');
+    if(editBookForm) {
+        editBookForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const id = parseInt(form.elements['bookId'].value, 10);
+            
+            const books = await getBooks();
+            const existingBook = books.find(b => b.id === id);
+            if (!existingBook) return;
 
-    // --- MAIN FORM: Add Book + Themes + Reading ---
-    formNewBook.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        clearFormErrors(formNewBook);
-
-        const title = formNewBook.elements['title'].value.trim();
-        const yearRaw = formNewBook.elements['publicationYear'].value.trim();
-        const selectedAuthorId = formNewBook.elements['authorId'].value;
-        const typedAuthorName = formNewBook.elements['typedAuthor'].value.trim();
-        const formValue = formNewBook.elements['form'].value;
-        
-        // Trata os Temas (Separados por vírgula)
-        const themeStr = formNewBook.elements['themes'].value.trim();
-        let themeIds = [];
-        if (themeStr) {
-            const themeNames = themeStr.split(',').map(t => t.trim()).filter(Boolean);
-            const existingThemes = await getThemes();
-            for (let name of themeNames) {
-                let found = existingThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
-                if (!found) found = await saveTheme(name);
-                themeIds.push(found.id);
-            }
-        }
-
-        const status = formNewBook.status.value;
-        const yearReadRaw = formNewBook.yearRead.disabled ? '' : formNewBook.yearRead.value.trim();
-        const gradeRaw = formNewBook.grade.disabled ? '' : formNewBook.grade.value.trim();
-        const priority = formNewBook.priority.disabled ? '' : formNewBook.priority.value;
-
-        let authorIds = [];
-        let newAuthorToSave = null;
-        let authorErrors = {};
-
-        if (typedAuthorName) {
-            const existingAuthors = await getAuthors();
-            const alreadyExists = existingAuthors.find(a => a.name.trim().toLowerCase() === typedAuthorName.toLowerCase());
-            if (alreadyExists) authorIds = [alreadyExists.id];
-            else {
-                const authorCheck = await validateAuthor({ name: typedAuthorName });
-                if (!authorCheck.valid) authorErrors = authorCheck.errors;
-                else newAuthorToSave = { name: typedAuthorName };
-            }
-        } else if (selectedAuthorId) {
-            authorIds = [parseInt(selectedAuthorId, 10)];
-        }
-
-        const bookDraft = {
-            title,
-            publicationYear: yearRaw !== '' ? parseInt(yearRaw, 10) : null,
-            authorIds: newAuthorToSave ? ['PENDING'] : authorIds,
-            form: formValue || null,
-            themeIds
-        };
-
-        const readingDraft = {
-            status,
-            yearRead: yearReadRaw !== '' ? parseInt(yearReadRaw, 10) : null,
-            grade: gradeRaw !== '' ? parseFloat(gradeRaw) : null,
-            priority: priority || null
-        };
-
-        const bookValidation = validateBook(bookDraft);
-        const readingValidation = validateReading(readingDraft, bookDraft, false);
-        const allErrors = { ...authorErrors, ...bookValidation.errors, ...readingValidation.errors };
-
-        if (Object.keys(allErrors).length > 0) {
-            showFormErrors(formNewBook, allErrors);
-            return;
-        }
-
-        if (newAuthorToSave) {
-            const savedAuthor = await saveAuthor(newAuthorToSave);
-            bookDraft.authorIds = [savedAuthor.id];
-        }
-
-        const savedBook = await saveBook(bookDraft);
-        readingDraft.bookId = savedBook.id;
-        await saveReading(readingDraft);
-
-        formNewBook.reset();
-        formNewBook.querySelector('[name="status"]').dispatchEvent(new Event('change'));
-        await refreshUI();
-    });
-
-    // --- Book Grid Actions ---
-    const bookListEl = document.getElementById('book-list');
-    
-    bookListEl.addEventListener('change', async (event) => {
-        if (event.target.matches('.status-badge')) {
-            const readingId = parseInt(event.target.dataset.readingId, 10);
-            const newStatus = event.target.value;
-            const reading = await getReadingById(readingId);
-
-            const nextAllowsYearAndGrade = newStatus === 'Read' || newStatus === 'Abandoned';
-            const hasYearOrGrade = reading.yearRead !== null || reading.grade !== null;
-
-            if (!nextAllowsYearAndGrade && hasYearOrGrade) {
-                const ok = window.confirm(`Moving to "${newStatus}" does not allow a Year Read or Grade. Clear those values?`);
-                if (!ok) {
-                    event.target.value = reading.status; 
-                    return;
+            const themeStr = form.elements['themes'].value.trim();
+            let themeIds = [];
+            if (themeStr) {
+                const themeNames = themeStr.split(',').map(t => t.trim()).filter(Boolean);
+                const existingThemes = await getThemes();
+                for (let name of themeNames) {
+                    let found = existingThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
+                    if (!found) found = await saveTheme(name);
+                    themeIds.push(found.id);
                 }
             }
 
-            await updateReadingStatus(readingId, newStatus);
+            const draft = {
+                ...existingBook, 
+                title: form.elements['title'].value.trim(),
+                publicationYear: form.elements['publicationYear'].value ? parseInt(form.elements['publicationYear'].value) : null,
+                form: form.elements['form'].value || null,
+                themeIds
+            };
+            
+            const val = validateBook(draft);
+            if (!val.valid) { showFormErrors(form, val.errors); return; }
+            
+            await updateBook(id, draft);
+            document.getElementById('book-edit-modal').close();
             await renderBooks();
-        }
-    });
+        });
+    }
 
-    bookListEl.addEventListener('click', async (event) => {
-        if (event.target.matches('.btn-readings')) {
-            const bookId = parseInt(event.target.dataset.bookId, 10);
-            await openReadingModal(bookId);
-        }
+    if(formNewBook) {
+        formNewBook.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            clearFormErrors(formNewBook);
 
-        if (event.target.matches('.btn-edit-book')) {
-            const bookId = parseInt(event.target.dataset.bookId, 10);
-            await openBookEditModal(bookId);
-        }
+            const title = formNewBook.elements['title'].value.trim();
+            const yearRaw = formNewBook.elements['publicationYear'].value.trim();
+            const selectedAuthorId = formNewBook.elements['authorId'].value;
+            const typedAuthorName = formNewBook.elements['typedAuthor'].value.trim();
+            const formValue = formNewBook.elements['form'].value;
+            
+            const themeStr = formNewBook.elements['themes'].value.trim();
+            let themeIds = [];
+            if (themeStr) {
+                const themeNames = themeStr.split(',').map(t => t.trim()).filter(Boolean);
+                const existingThemes = await getThemes();
+                for (let name of themeNames) {
+                    let found = existingThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
+                    if (!found) found = await saveTheme(name);
+                    themeIds.push(found.id);
+                }
+            }
 
-        if (event.target.matches('.btn-remove')) {
-            const bookId = parseInt(event.target.dataset.bookId, 10);
-            const books = await getBooks();
-            const book = books.find(b => b.id === bookId);
-            const readingsCount = (await getReadingsByBookId(bookId)).length;
-            const readingLabel = readingsCount === 1 ? '1 reading' : `${readingsCount} readings`;
+            const status = formNewBook.status.value;
+            const yearReadRaw = formNewBook.yearRead.disabled ? '' : formNewBook.yearRead.value.trim();
+            const gradeRaw = formNewBook.grade.disabled ? '' : formNewBook.grade.value.trim();
+            const priority = formNewBook.priority.disabled ? '' : formNewBook.priority.value;
 
-            // FR-04: Confirmation Alert Cascading Warning
-            if (confirm(`Are you sure you want to delete "${book?.title}"? This will also delete ${readingLabel}.`)) {
-                await deleteBook(bookId);
+            let authorIds = [];
+            let newAuthorToSave = null;
+            let authorErrors = {};
+
+            if (typedAuthorName) {
+                const existingAuthors = await getAuthors();
+                const alreadyExists = existingAuthors.find(a => a.name.trim().toLowerCase() === typedAuthorName.toLowerCase());
+                if (alreadyExists) authorIds = [alreadyExists.id];
+                else {
+                    const authorCheck = await validateAuthor({ name: typedAuthorName });
+                    if (!authorCheck.valid) authorErrors = authorCheck.errors;
+                    else newAuthorToSave = { name: typedAuthorName };
+                }
+            } else if (selectedAuthorId) {
+                authorIds = [parseInt(selectedAuthorId, 10)];
+            }
+
+            const bookDraft = { title, publicationYear: yearRaw !== '' ? parseInt(yearRaw, 10) : null, authorIds: newAuthorToSave ? ['PENDING'] : authorIds, form: formValue || null, themeIds };
+            const readingDraft = { status, yearRead: yearReadRaw !== '' ? parseInt(yearReadRaw, 10) : null, grade: gradeRaw !== '' ? parseFloat(gradeRaw) : null, priority: priority || null };
+
+            const bookValidation = validateBook(bookDraft);
+            const readingValidation = validateReading(readingDraft, bookDraft, false);
+            const allErrors = { ...authorErrors, ...bookValidation.errors, ...readingValidation.errors };
+
+            if (Object.keys(allErrors).length > 0) {
+                showFormErrors(formNewBook, allErrors);
+                return;
+            }
+
+            if (newAuthorToSave) {
+                const savedAuthor = await saveAuthor(newAuthorToSave);
+                bookDraft.authorIds = [savedAuthor.id];
+            }
+
+            const savedBook = await saveBook(bookDraft);
+            readingDraft.bookId = savedBook.id;
+            await saveReading(readingDraft);
+
+            formNewBook.reset();
+            formNewBook.querySelector('[name="status"]').dispatchEvent(new Event('change'));
+            await refreshUI();
+        });
+    }
+
+    const bookListEl = document.getElementById('book-list');
+    if(bookListEl) {
+        bookListEl.addEventListener('change', async (event) => {
+            if (event.target.matches('.status-badge')) {
+                const readingId = parseInt(event.target.dataset.readingId, 10);
+                const newStatus = event.target.value;
+                const reading = await getReadingById(readingId);
+
+                const nextAllowsYearAndGrade = newStatus === 'Read' || newStatus === 'Abandoned';
+                const hasYearOrGrade = reading.yearRead !== null || reading.grade !== null;
+
+                if (!nextAllowsYearAndGrade && hasYearOrGrade) {
+                    const ok = window.confirm(`Moving to "${newStatus}" does not allow a Year Read or Grade. Clear those values?`);
+                    if (!ok) {
+                        event.target.value = reading.status; 
+                        return;
+                    }
+                }
+                await updateReadingStatus(readingId, newStatus);
                 await renderBooks();
             }
-        }
-    });
+        });
 
-    // --- Reading History Modal Form ---
-    modalReadingForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        clearFormErrors(modalReadingForm);
+        bookListEl.addEventListener('click', async (event) => {
+            if (event.target.matches('.btn-readings')) {
+                const bookId = parseInt(event.target.dataset.bookId, 10);
+                await openReadingModal(bookId);
+            }
 
-        const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
-        const editReadingId = document.getElementById('modal-reading-id').value;
-        const isEdit = editReadingId !== '';
+            if (event.target.matches('.btn-edit-book')) {
+                const bookId = parseInt(event.target.dataset.bookId, 10);
+                await openBookEditModal(bookId);
+            }
 
-        const status = modalReadingForm.status.value;
-        const yearReadRaw = modalReadingForm.yearRead.disabled ? '' : modalReadingForm.yearRead.value.trim();
-        const gradeRaw = modalReadingForm.grade.disabled ? '' : modalReadingForm.grade.value.trim();
-        const priority = modalReadingForm.priority.disabled ? '' : modalReadingForm.priority.value;
+            if (event.target.matches('.btn-remove')) {
+                const bookId = parseInt(event.target.dataset.bookId, 10);
+                const books = await getBooks();
+                const book = books.find(b => b.id === bookId);
+                const readingsCount = (await getReadingsByBookId(bookId)).length;
+                const readingLabel = readingsCount === 1 ? '1 reading' : `${readingsCount} readings`;
 
-        const readingDraft = {
-            bookId,
-            status,
-            yearRead: yearReadRaw !== '' ? parseInt(yearReadRaw, 10) : null,
-            grade: gradeRaw !== '' ? parseFloat(gradeRaw) : null,
-            priority: priority || null
-        };
+                if (confirm(`Are you sure you want to delete "${book?.title}"? This will also delete ${readingLabel}.`)) {
+                    await deleteBook(bookId);
+                    await renderBooks();
+                }
+            }
+        });
+    }
 
-        const books = await getBooks();
-        const book = books.find(b => b.id === bookId);
+    if(modalReadingForm) {
+        modalReadingForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            clearFormErrors(modalReadingForm);
 
-        const validation = validateReading(readingDraft, book, true);
-        if (!validation.valid) {
-            showFormErrors(modalReadingForm, validation.errors);
-            return;
-        }
+            const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
+            const editReadingId = document.getElementById('modal-reading-id').value;
+            const isEdit = editReadingId !== '';
 
-        if (isEdit) {
-            await updateReading(editReadingId, readingDraft);
-        } else {
-            await saveReading(readingDraft);
-        }
+            const status = modalReadingForm.status.value;
+            const yearReadRaw = modalReadingForm.yearRead.disabled ? '' : modalReadingForm.yearRead.value.trim();
+            const gradeRaw = modalReadingForm.grade.disabled ? '' : modalReadingForm.grade.value.trim();
+            const priority = modalReadingForm.priority.disabled ? '' : modalReadingForm.priority.value;
+            const recommendedBy = modalReadingForm.recommendedBy.value.trim();
+            const notes = modalReadingForm.notes.value.trim();
 
-        resetModalForm(bookId);
-        await renderModalReadings(bookId);
-        await renderBooks();
-    });
+            const readingDraft = {
+                bookId, status,
+                yearRead: yearReadRaw !== '' ? parseInt(yearReadRaw, 10) : null,
+                grade: gradeRaw !== '' ? parseFloat(gradeRaw) : null,
+                priority: priority || null,
+                recommendedBy: recommendedBy || null,
+                notes: notes || null
+            };
 
-    document.getElementById('btn-cancel-edit').addEventListener('click', () => {
+            const books = await getBooks();
+            const book = books.find(b => b.id === bookId);
+
+            const validation = validateReading(readingDraft, book, true);
+            if (!validation.valid) {
+                showFormErrors(modalReadingForm, validation.errors);
+                return;
+            }
+
+            if (isEdit) {
+                await updateReading(editReadingId, readingDraft);
+            } else {
+                await saveReading(readingDraft);
+            }
+
+            resetModalForm(bookId);
+            await renderModalReadings(bookId);
+            await renderBooks();
+        });
+    }
+
+    document.getElementById('btn-cancel-edit')?.addEventListener('click', () => {
         const bookId = document.getElementById('modal-book-id').value;
         resetModalForm(bookId);
     });
 
-    document.getElementById('modal-readings-list').addEventListener('click', async (event) => {
+    document.getElementById('modal-readings-list')?.addEventListener('click', async (event) => {
         if (event.target.matches('.btn-delete-reading')) {
             const readingId = parseInt(event.target.dataset.readingId, 10);
             const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
@@ -661,6 +677,9 @@ function setupEventListeners() {
             if (!modalReadingForm.yearRead.disabled) modalReadingForm.yearRead.value = reading.yearRead || '';
             if (!modalReadingForm.grade.disabled) modalReadingForm.grade.value = reading.grade || '';
             if (!modalReadingForm.priority.disabled) modalReadingForm.priority.value = reading.priority || '';
+            
+            modalReadingForm.recommendedBy.value = reading.recommendedBy || '';
+            modalReadingForm.notes.value = reading.notes || '';
             
             clearFormErrors(modalReadingForm);
         }
