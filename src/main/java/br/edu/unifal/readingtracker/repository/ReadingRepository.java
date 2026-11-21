@@ -1,0 +1,1 @@
+package br.edu.unifal.readingtracker.repository; import br.edu.unifal.readingtracker.domain.Reading; import org.springframework.data.jpa.repository.JpaRepository; public interface ReadingRepository extends JpaRepository
