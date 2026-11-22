@@ -1,1 +1,10 @@
-package br.edu.unifal.readingtracker.repository; import br.edu.unifal.readingtracker.domain.Author; import org.springframework.data.jpa.repository.JpaRepository; import java.util.Optional; public interface AuthorRepository extends JpaRepository
+package br.edu.unifal.readingtracker.repository;
+
+import br.edu.unifal.readingtracker.domain.Author;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface AuthorRepository extends JpaRepository<Author, Long> {
+
+    Optional<Author> findByName(String name);
+}

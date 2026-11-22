@@ -1,1 +1,10 @@
-package br.edu.unifal.readingtracker.repository; import br.edu.unifal.readingtracker.domain.Country; import org.springframework.data.jpa.repository.JpaRepository; import java.util.Optional; public interface CountryRepository extends JpaRepository
+package br.edu.unifal.readingtracker.repository;
+
+import br.edu.unifal.readingtracker.domain.Country;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface CountryRepository extends JpaRepository<Country, Long> {
+
+    Optional<Country> findByName(String name);
+}
