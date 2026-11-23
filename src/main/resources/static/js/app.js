@@ -1,27 +1,77 @@
 // js/app.js
-import {
-    initializeStore, resetData,
-    getAuthors, getBooks, getReadings, getReadingsByBookId, getReadingById, getThemes,
-    saveAuthor, updateAuthor, deleteAuthor, saveTheme,
-    saveBook, updateBook, deleteBook,
-    saveReading, updateReading, updateReadingStatus, deleteReading
-} from './store.js';
+import store from './store.js';
 import { validateAuthor, validateBook, validateReading } from './validation.js';
 
 let currentSort = 'recent';
 let logSortCol = 'yearRead';
 let logSortDir = 'desc';
 
+let appState = {
+    books: [],
+    authors: [],
+    readings: [],
+    themes: [],
+    countries: []
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await initializeStore();
-        await refreshUI();
+        await init();
         setupEventListeners();
-    } catch (e) { console.error("Initialization Error:", e); }
+    } catch (e) {
+        console.error('Initialization Error:', e);
+    }
 });
 
+async function init() {
+    await refreshUI();
+}
+
+async function loadAllData() {
+    const [books, authors, readings, themes, countries] = await Promise.all([
+        store.getBooks(),
+        store.getAuthors(),
+        store.getReadings(),
+        store.getThemes(),
+        store.getCountries()
+    ]);
+
+    appState = {
+        books: books || [],
+        authors: authors || [],
+        readings: readings || [],
+        themes: themes || [],
+        countries: countries || []
+    };
+
+    return appState;
+}
+
 async function refreshUI() {
-    await Promise.all([populateAuthorDropdown(), renderBooks()]);
+    await loadAllData();
+    populateAuthorDropdown();
+    renderBooks();
+}
+
+// =========================================================
+// DATA NORMALIZATION HELPERS (IDs ou objetos aninhados da API)
+// =========================================================
+function getBookAuthorIds(book) {
+    if (Array.isArray(book.authorIds)) return book.authorIds;
+    if (Array.isArray(book.authors)) return book.authors.map(a => (typeof a === 'object' ? a.id : a));
+    return [];
+}
+
+function getBookThemeIds(book) {
+    if (Array.isArray(book.themeIds)) return book.themeIds;
+    if (Array.isArray(book.themes)) return book.themes.map(t => (typeof t === 'object' ? t.id : t));
+    return [];
+}
+
+function getReadingBookId(reading) {
+    if (reading.bookId != null) return reading.bookId;
+    if (reading.book && reading.book.id != null) return reading.book.id;
+    return null;
 }
 
 const escapeHTML = (str) => {
@@ -45,7 +95,7 @@ function showFormErrors(formEl, errors) {
 }
 
 function clearFormErrors(formEl) {
-    formEl.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    formEl.querySelectorAll('.field-error').forEach(el => (el.textContent = ''));
     formEl.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
 }
 
@@ -90,19 +140,18 @@ function attachReadingWorkflowBehavior(form) {
 // =========================================================
 // RENDERING
 // =========================================================
-async function populateAuthorDropdown() {
-    const authors = await getAuthors();
+function populateAuthorDropdown() {
     const dropdown = document.getElementById('new-author');
     if (!dropdown) return;
-    const sorted = [...authors].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    dropdown.innerHTML = `<option value="">Select Existing Author...</option>${sorted.map(a => `<option value="${a.id}">${escapeHTML(a.name)}</option>`).join('')}`;
+    const sorted = [...appState.authors].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    dropdown.innerHTML = `<option value="">Select Existing Author...</option>${sorted
+        .map(a => `<option value="${a.id}">${escapeHTML(a.name)}</option>`)
+        .join('')}`;
 }
 
-async function renderBooks() {
-    const [books, authors, themes, readings] = await Promise.all([
-        getBooks(), getAuthors(), getThemes(), getReadings()
-    ]);
-    
+function renderBooks() {
+    const { books, authors, themes, readings } = appState;
+
     const bookListEl = document.getElementById('book-list');
     const counterEl = document.getElementById('book-counter');
     if (!bookListEl) return;
@@ -113,42 +162,64 @@ async function renderBooks() {
         return;
     }
 
-    const displayBooks = [...books].sort((a, b) => currentSort === 'title' ? (a.title || '').localeCompare(b.title || '') : b.id - a.id);
+    const displayBooks = [...books].sort((a, b) =>
+        currentSort === 'title' ? (a.title || '').localeCompare(b.title || '') : b.id - a.id
+    );
     if (counterEl) counterEl.textContent = `(${displayBooks.length} books)`;
 
-    bookListEl.innerHTML = displayBooks.map(book => {
-        const authorNames = book.authorIds?.map(id => authors.find(a => a.id === id)?.name).filter(Boolean).join(', ') || 'Unknown Author';
-        const themeNames = book.themeIds?.map(id => themes.find(t => t.id === id)?.name).filter(Boolean).join(', ');
-        const yearDisplay = book.publicationYear ? (book.publicationYear < 0 ? `${Math.abs(book.publicationYear)} BC` : book.publicationYear) : 'Not informed';
+    bookListEl.innerHTML = displayBooks
+        .map(book => {
+            const authorIds = getBookAuthorIds(book);
+            const themeIds = getBookThemeIds(book);
 
-        const bookReadings = readings.filter(r => r.bookId === book.id);
-        const latest = bookReadings[bookReadings.length - 1];
-        const status = latest?.status || 'Want to read';
-        
-        const statusHTML = latest 
-            ? `<select class="status-badge status-${status.toLowerCase().replace(/\s+/g, '-')}" data-reading-id="${latest.id}">
-                 ${['Want to read', 'Reading', 'Paused', 'Read', 'Abandoned'].map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`).join('')}
-               </select>`
-            : `<span class="status-badge status-unknown">No Reading</span>`;
+            const authorNames =
+                authorIds
+                    .map(id => authors.find(a => a.id === id)?.name)
+                    .filter(Boolean)
+                    .join(', ') || 'Unknown Author';
 
-        return `
-            <div class="book-card">
-                <div>
-                    ${statusHTML}
-                    <h3>${escapeHTML(book.title)}</h3>
-                    <p><strong>Author:</strong> ${escapeHTML(authorNames)}</p>
-                    <p><strong>Published:</strong> ${yearDisplay}</p>
-                    ${themeNames ? `<p><strong>Themes:</strong> ${escapeHTML(themeNames)}</p>` : ''}
-                    ${latest?.yearRead ? `<p><strong>Year Read:</strong> ${latest.yearRead}</p>` : ''}
-                    ${latest?.grade ? `<p><strong>Grade:</strong> ${latest.grade}/10</p>` : ''}
-                </div>
-                <div class="card-actions">
-                    <button type="button" class="btn-readings" data-book-id="${book.id}">Readings (${bookReadings.length})</button>
-                    <button type="button" class="btn-edit-book" data-book-id="${book.id}">Edit</button>
-                    <button type="button" class="btn-remove" data-book-id="${book.id}">Remove</button>
-                </div>
-            </div>`;
-    }).join('');
+            const themeNames = themeIds
+                .map(id => themes.find(t => t.id === id)?.name)
+                .filter(Boolean)
+                .join(', ');
+
+            const yearDisplay = book.publicationYear
+                ? book.publicationYear < 0
+                    ? `${Math.abs(book.publicationYear)} BC`
+                    : book.publicationYear
+                : 'Not informed';
+
+            const bookReadings = readings.filter(r => getReadingBookId(r) === book.id);
+            const latest = bookReadings[bookReadings.length - 1];
+            const status = latest?.status || 'Want to read';
+
+            const statusHTML = latest
+                ? `<select class="status-badge status-${status.toLowerCase().replace(/\s+/g, '-')}" data-reading-id="${latest.id}">
+                     ${['Want to read', 'Reading', 'Paused', 'Read', 'Abandoned']
+                         .map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`)
+                         .join('')}
+                   </select>`
+                : `<span class="status-badge status-unknown">No Reading</span>`;
+
+            return `
+                <div class="book-card">
+                    <div>
+                        ${statusHTML}
+                        <h3>${escapeHTML(book.title)}</h3>
+                        <p><strong>Author:</strong> ${escapeHTML(authorNames)}</p>
+                        <p><strong>Published:</strong> ${yearDisplay}</p>
+                        ${themeNames ? `<p><strong>Themes:</strong> ${escapeHTML(themeNames)}</p>` : ''}
+                        ${latest?.yearRead ? `<p><strong>Year Read:</strong> ${latest.yearRead}</p>` : ''}
+                        ${latest?.grade ? `<p><strong>Grade:</strong> ${latest.grade}/10</p>` : ''}
+                    </div>
+                    <div class="card-actions">
+                        <button type="button" class="btn-readings" data-book-id="${book.id}">Readings (${bookReadings.length})</button>
+                        <button type="button" class="btn-edit-book" data-book-id="${book.id}">Edit</button>
+                        <button type="button" class="btn-remove" data-book-id="${book.id}">Remove</button>
+                    </div>
+                </div>`;
+        })
+        .join('');
 }
 
 // =========================================================
@@ -156,13 +227,21 @@ async function renderBooks() {
 // =========================================================
 async function processThemesInput(themeStr) {
     if (!themeStr) return [];
-    const themeNames = themeStr.split(',').map(t => t.trim()).filter(Boolean);
-    const existingThemes = await getThemes();
+    const themeNames = themeStr
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+
+    const existingThemes = await store.getThemes();
     const themeIds = [];
-    for (let name of themeNames) {
-        let found = existingThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
-        if (!found) found = await saveTheme(name);
-        themeIds.push(found.id);
+
+    for (const name of themeNames) {
+        let found = existingThemes.find(t => (t.name || '').toLowerCase() === name.toLowerCase());
+        if (!found) {
+            found = await store.saveTheme({ name });
+            existingThemes.push(found);
+        }
+        if (found?.id != null) themeIds.push(found.id);
     }
     return themeIds;
 }
@@ -180,14 +259,18 @@ function resetModalForm(bookId) {
 }
 
 async function renderModalReadings(bookId) {
-    const bookReadings = await getReadingsByBookId(bookId);
+    const allReadings = await store.getReadings();
+    const bookReadings = allReadings.filter(r => getReadingBookId(r) === bookId);
     const historyListEl = document.getElementById('modal-readings-list');
-    
+
     if (!bookReadings.length) {
         historyListEl.innerHTML = '<p class="empty-message">No readings logged yet.</p>';
         return;
     }
-    historyListEl.innerHTML = bookReadings.map((r, i) => `
+
+    historyListEl.innerHTML = bookReadings
+        .map(
+            (r, i) => `
         <div class="reading-history-item">
             <div class="reading-item-header">
                 <span><strong>#${i + 1}</strong> <span class="status-pill status-${r.status.toLowerCase().replace(/\s+/g, '-')}">${escapeHTML(r.status)}</span></span>
@@ -201,26 +284,30 @@ async function renderModalReadings(bookId) {
             ${r.priority ? `<p><strong>Priority:</strong> ${escapeHTML(r.priority)}</p>` : ''}
             ${r.recommendedBy ? `<p><strong>Rec. by:</strong> ${escapeHTML(r.recommendedBy)}</p>` : ''}
             ${r.notes ? `<p><strong>Notes:</strong> ${escapeHTML(r.notes)}</p>` : ''}
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 }
 
 async function openReadingModal(bookId) {
-    const books = await getBooks();
+    const books = await store.getBooks();
     const book = books.find(b => b.id === bookId);
     if (!book) return;
 
     const modal = document.getElementById('reading-modal');
     document.getElementById('modal-book-title').textContent = `Readings: ${book.title}`;
-    
+
     resetModalForm(book.id);
     await renderModalReadings(book.id);
     modal.showModal();
 }
 
 async function renderAuthorTable() {
-    const authors = await getAuthors();
+    const authors = await store.getAuthors();
     const sorted = [...authors].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    document.querySelector('#author-table tbody').innerHTML = sorted.map(a => `
+    document.querySelector('#author-table tbody').innerHTML = sorted
+        .map(
+            a => `
         <tr>
             <td>${a.id}</td>
             <td>${escapeHTML(a.name)}</td>
@@ -228,17 +315,34 @@ async function renderAuthorTable() {
                 <button type="button" class="btn-small-edit" data-edit-author="${a.id}">Edit</button>
                 <button type="button" class="btn-small-del" data-del-author="${a.id}">Del</button>
             </td>
-        </tr>`).join('');
+        </tr>`
+        )
+        .join('');
 }
 
 async function renderReadingLogTable() {
-    const [readings, books, authors] = await Promise.all([getReadings(), getBooks(), getAuthors()]);
-    
-    let logData = readings.map(r => {
-        const book = books.find(b => b.id === r.bookId) || {};
+    const [readings, books, authors] = await Promise.all([
+        store.getReadings(),
+        store.getBooks(),
+        store.getAuthors()
+    ]);
+
+    const logData = readings.map(r => {
+        const bookId = getReadingBookId(r);
+        const book = books.find(b => b.id === bookId) || {};
+        const authorIds = getBookAuthorIds(book);
+
         return {
-            id: r.id, title: book.title || 'Unknown', status: r.status, yearRead: r.yearRead, grade: r.grade,
-            authors: book.authorIds?.map(id => authors.find(a => a.id === id)?.name).filter(Boolean).join(', ') || '-'
+            id: r.id,
+            title: book.title || 'Unknown',
+            status: r.status,
+            yearRead: r.yearRead,
+            grade: r.grade,
+            authors:
+                authorIds
+                    .map(id => authors.find(a => a.id === id)?.name)
+                    .filter(Boolean)
+                    .join(', ') || '-'
         };
     });
 
@@ -246,12 +350,27 @@ async function renderReadingLogTable() {
         if (a[logSortCol] === b[logSortCol]) return a.id - b.id;
         if (a[logSortCol] == null) return 1;
         if (b[logSortCol] == null) return -1;
-        return a[logSortCol] < b[logSortCol] ? (logSortDir === 'asc' ? -1 : 1) : (logSortDir === 'asc' ? 1 : -1);
+        return a[logSortCol] < b[logSortCol]
+            ? logSortDir === 'asc'
+                ? -1
+                : 1
+            : logSortDir === 'asc'
+            ? 1
+            : -1;
     });
 
-    document.querySelector('#log-table tbody').innerHTML = logData.map(d => `
-        <tr><td>${escapeHTML(d.title)}</td><td>${escapeHTML(d.authors)}</td><td>${escapeHTML(d.status)}</td><td>${d.yearRead || '-'}</td><td>${d.grade || '-'}</td></tr>
-    `).join('');
+    document.querySelector('#log-table tbody').innerHTML = logData
+        .map(
+            d => `
+        <tr>
+            <td>${escapeHTML(d.title)}</td>
+            <td>${escapeHTML(d.authors)}</td>
+            <td>${escapeHTML(d.status)}</td>
+            <td>${d.yearRead || '-'}</td>
+            <td>${d.grade || '-'}</td>
+        </tr>`
+        )
+        .join('');
 }
 
 // =========================================================
@@ -260,31 +379,35 @@ async function renderReadingLogTable() {
 function setupEventListeners() {
     const formNewBook = document.getElementById('form-new-book');
     const formReading = document.getElementById('form-modal-reading');
-    
-    if(formNewBook) attachReadingWorkflowBehavior(formNewBook);
-    if(formReading) attachReadingWorkflowBehavior(formReading);
+
+    if (formNewBook) attachReadingWorkflowBehavior(formNewBook);
+    if (formReading) attachReadingWorkflowBehavior(formReading);
 
     document.getElementById('btn-manage-authors')?.addEventListener('click', async () => {
         await renderAuthorTable();
         document.getElementById('author-manager-modal').showModal();
     });
-    
+
     document.getElementById('btn-view-log')?.addEventListener('click', async () => {
         await renderReadingLogTable();
         document.getElementById('reading-log-modal').showModal();
     });
-    
+
     document.getElementById('btn-sort')?.addEventListener('click', (e) => {
         currentSort = currentSort === 'recent' ? 'title' : 'recent';
         e.target.textContent = currentSort === 'recent' ? 'Sort: Newest First' : 'Sort: A-Z';
         renderBooks();
     });
-    
+
     document.getElementById('btn-reset')?.addEventListener('click', async () => {
-        if (confirm('Reset all data back to seed.json?')) { await resetData(); await refreshUI(); }
+        if (confirm('Reload all data from the API?')) {
+            await refreshUI();
+        }
     });
-    
-    document.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', e => e.target.closest('dialog').close()));
+
+    document.querySelectorAll('.btn-close-modal').forEach(btn =>
+        btn.addEventListener('click', e => e.target.closest('dialog').close())
+    );
 
     setupAuthorForm();
     setupBookEditForm();
@@ -296,21 +419,33 @@ function setupEventListeners() {
 function setupAuthorForm() {
     const form = document.getElementById('form-manage-author');
     if (!form) return;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const id = form.elements['authorId'].value;
-        const name = form.elements['authorName'].value;
-        const val = await validateAuthor({ id: id ? parseInt(id) : null, name });
-        
+        const idRaw = form.elements['authorId'].value;
+        const id = idRaw ? parseInt(idRaw, 10) : null;
+        const name = form.elements['authorName'].value.trim();
+
+        const val = await validateAuthor({ id, name });
         if (!val.valid) return showFormErrors(form, val.errors);
-        id ? await updateAuthor(id, { name }) : await saveAuthor({ name });
-        
-        form.reset(); form.elements['authorId'].value = '';
+
+        if (id) {
+            await store.saveAuthor({ id, name });
+        } else {
+            await store.saveAuthor({ name });
+        }
+
+        form.reset();
+        form.elements['authorId'].value = '';
         document.getElementById('btn-cancel-author-edit').style.display = 'none';
-        await renderAuthorTable(); await refreshUI();
+        clearFormErrors(form);
+        await renderAuthorTable();
+        await refreshUI();
     });
+
     document.getElementById('btn-cancel-author-edit')?.addEventListener('click', () => {
-        form.reset(); form.elements['authorId'].value = '';
+        form.reset();
+        form.elements['authorId'].value = '';
         document.getElementById('btn-cancel-author-edit').style.display = 'none';
         clearFormErrors(form);
     });
@@ -319,32 +454,37 @@ function setupAuthorForm() {
 function setupBookEditForm() {
     const form = document.getElementById('form-edit-book');
     if (!form) return;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = parseInt(form.elements['bookId'].value, 10);
-        const books = await getBooks();
+        const books = await store.getBooks();
         const existingBook = books.find(b => b.id === id);
         if (!existingBook) return;
 
         const draft = {
-            ...existingBook, 
+            ...existingBook,
+            id,
             title: form.elements['title'].value.trim(),
-            publicationYear: form.elements['publicationYear'].value ? parseInt(form.elements['publicationYear'].value) : null,
+            publicationYear: form.elements['publicationYear'].value
+                ? parseInt(form.elements['publicationYear'].value, 10)
+                : null,
             form: form.elements['form'].value || null,
             themeIds: await processThemesInput(form.elements['themes'].value)
         };
-        
+
         const val = validateBook(draft);
         if (!val.valid) return showFormErrors(form, val.errors);
-        
-        await updateBook(id, draft);
+
+        await store.saveBook(draft);
         document.getElementById('book-edit-modal').close();
-        await renderBooks();
+        await refreshUI();
     });
 }
 
 function setupMainForm(form) {
     if (!form) return;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearFormErrors(form);
@@ -353,12 +493,18 @@ function setupMainForm(form) {
         const typedAuthorName = form.elements['typedAuthor'].value.trim();
         const themeIds = await processThemesInput(form.elements['themes'].value);
 
-        let authorIds = [], newAuthorToSave = null, authorErrors = {};
+        let authorIds = [];
+        let newAuthorToSave = null;
+        let authorErrors = {};
+
         if (typedAuthorName) {
-            const authors = await getAuthors();
-            const exists = authors.find(a => a.name.trim().toLowerCase() === typedAuthorName.toLowerCase());
-            if (exists) authorIds = [exists.id];
-            else {
+            const authors = await store.getAuthors();
+            const exists = authors.find(
+                a => (a.name || '').trim().toLowerCase() === typedAuthorName.toLowerCase()
+            );
+            if (exists) {
+                authorIds = [exists.id];
+            } else {
                 const check = await validateAuthor({ name: typedAuthorName });
                 if (!check.valid) authorErrors = check.errors;
                 else newAuthorToSave = { name: typedAuthorName };
@@ -374,12 +520,18 @@ function setupMainForm(form) {
             form: form.elements['form'].value || null,
             themeIds
         };
-        
+
         const readingDraft = {
             status: form.elements['status'].value,
-            yearRead: form.elements['yearRead'].disabled || !form.elements['yearRead'].value ? null : parseInt(form.elements['yearRead'].value, 10),
-            grade: form.elements['grade'].disabled || !form.elements['grade'].value ? null : parseFloat(form.elements['grade'].value),
-            priority: form.elements['priority'].disabled ? null : form.elements['priority'].value
+            yearRead:
+                form.elements['yearRead'].disabled || !form.elements['yearRead'].value
+                    ? null
+                    : parseInt(form.elements['yearRead'].value, 10),
+            grade:
+                form.elements['grade'].disabled || !form.elements['grade'].value
+                    ? null
+                    : parseFloat(form.elements['grade'].value),
+            priority: form.elements['priority'].disabled ? null : form.elements['priority'].value || null
         };
 
         const valBook = validateBook(bookDraft);
@@ -388,9 +540,14 @@ function setupMainForm(form) {
 
         if (Object.keys(allErrors).length > 0) return showFormErrors(form, allErrors);
 
-        if (newAuthorToSave) bookDraft.authorIds = [(await saveAuthor(newAuthorToSave)).id];
-        readingDraft.bookId = (await saveBook(bookDraft)).id;
-        await saveReading(readingDraft);
+        if (newAuthorToSave) {
+            const createdAuthor = await store.saveAuthor(newAuthorToSave);
+            bookDraft.authorIds = [createdAuthor.id];
+        }
+
+        const createdBook = await store.saveBook(bookDraft);
+        readingDraft.bookId = createdBook.id;
+        await store.saveReading(readingDraft);
 
         form.reset();
         form.querySelector('[name="status"]').dispatchEvent(new Event('change'));
@@ -400,19 +557,29 @@ function setupMainForm(form) {
 
 function setupReadingModalForm(form) {
     if (!form) return;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearFormErrors(form);
 
         const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
-        const editId = document.getElementById('modal-reading-id').value;
-        const book = (await getBooks()).find(b => b.id === bookId);
+        const editIdRaw = document.getElementById('modal-reading-id').value;
+        const editId = editIdRaw ? parseInt(editIdRaw, 10) : null;
+        const book = (await store.getBooks()).find(b => b.id === bookId);
 
         const draft = {
-            bookId, status: form.status.value,
-            yearRead: form.yearRead.disabled || !form.yearRead.value ? null : parseInt(form.yearRead.value, 10),
-            grade: form.grade.disabled || !form.grade.value ? null : parseFloat(form.grade.value),
-            priority: form.priority.disabled ? null : form.priority.value,
+            ...(editId ? { id: editId } : {}),
+            bookId,
+            status: form.status.value,
+            yearRead:
+                form.yearRead.disabled || !form.yearRead.value
+                    ? null
+                    : parseInt(form.yearRead.value, 10),
+            grade:
+                form.grade.disabled || !form.grade.value
+                    ? null
+                    : parseFloat(form.grade.value),
+            priority: form.priority.disabled ? null : form.priority.value || null,
             recommendedBy: form.recommendedBy.value.trim() || null,
             notes: form.notes.value.trim() || null
         };
@@ -420,11 +587,11 @@ function setupReadingModalForm(form) {
         const val = validateReading(draft, book, true);
         if (!val.valid) return showFormErrors(form, val.errors);
 
-        editId ? await updateReading(editId, draft) : await saveReading(draft);
-        
+        await store.saveReading(draft);
+
         resetModalForm(bookId);
-        await renderModalReadings(bookId); 
-        await renderBooks();
+        await renderModalReadings(bookId);
+        await refreshUI();
     });
 
     document.getElementById('btn-cancel-edit')?.addEventListener('click', () => {
@@ -436,7 +603,8 @@ function setupReadingModalForm(form) {
 function setupDelegatedListeners() {
     document.querySelector('#author-table')?.addEventListener('click', async (e) => {
         if (e.target.matches('.btn-small-edit')) {
-            const author = (await getAuthors()).find(a => a.id === parseInt(e.target.dataset.editAuthor, 10));
+            const authors = await store.getAuthors();
+            const author = authors.find(a => a.id === parseInt(e.target.dataset.editAuthor, 10));
             if (!author) return;
             const form = document.getElementById('form-manage-author');
             form.elements['authorId'].value = author.id;
@@ -444,11 +612,19 @@ function setupDelegatedListeners() {
             document.getElementById('btn-cancel-author-edit').style.display = 'inline-block';
             clearFormErrors(form);
         }
+
         if (e.target.matches('.btn-small-del')) {
             const id = parseInt(e.target.dataset.delAuthor, 10);
-            const linked = (await getBooks()).filter(b => b.authorIds?.includes(id));
-            if (linked.length > 0) return alert(`Cannot delete. Linked to:\n${linked.map(b=>b.title).join(', ')}`);
-            if (confirm("Delete this author?")) { await deleteAuthor(id); await renderAuthorTable(); await refreshUI(); }
+            const books = await store.getBooks();
+            const linked = books.filter(b => getBookAuthorIds(b).includes(id));
+            if (linked.length > 0) {
+                return alert(`Cannot delete. Linked to:\n${linked.map(b => b.title).join(', ')}`);
+            }
+            if (confirm('Delete this author?')) {
+                await store.deleteAuthor(id);
+                await renderAuthorTable();
+                await refreshUI();
+            }
         }
     });
 
@@ -462,55 +638,85 @@ function setupDelegatedListeners() {
 
     document.getElementById('book-list')?.addEventListener('change', async (e) => {
         if (e.target.matches('.status-badge')) {
-            const reading = await getReadingById(parseInt(e.target.dataset.readingId, 10));
+            const readingId = parseInt(e.target.dataset.readingId, 10);
+            const reading = await store.getReadingById(readingId);
             const newStatus = e.target.value;
-            if (reading.yearRead || reading.grade) {
-                if (newStatus !== 'Read' && newStatus !== 'Abandoned' && !confirm(`Move to "${newStatus}" clears Year and Grade?`)) {
-                    return e.target.value = reading.status;
+            const clearsFields = newStatus !== 'Read' && newStatus !== 'Abandoned';
+
+            if ((reading.yearRead || reading.grade) && clearsFields) {
+                if (!confirm(`Move to "${newStatus}" clears Year and Grade?`)) {
+                    e.target.value = reading.status;
+                    return;
                 }
             }
-            await updateReadingStatus(reading.id, newStatus);
-            await renderBooks();
+
+            const updatedReading = {
+                ...reading,
+                status: newStatus,
+                yearRead: clearsFields ? null : reading.yearRead,
+                grade: clearsFields ? null : reading.grade,
+                priority: newStatus !== 'Want to read' ? null : reading.priority
+            };
+
+            await store.saveReading(updatedReading);
+            await refreshUI();
         }
     });
 
     document.getElementById('book-list')?.addEventListener('click', async (e) => {
         const bookId = parseInt(e.target.dataset.bookId, 10);
-        if (e.target.matches('.btn-readings')) await openReadingModal(bookId);
-        
+        if (e.target.matches('.btn-readings')) {
+            await openReadingModal(bookId);
+        }
+
         if (e.target.matches('.btn-edit-book')) {
-            const [books, themes] = await Promise.all([getBooks(), getThemes()]);
+            const [books, themes] = await Promise.all([store.getBooks(), store.getThemes()]);
             const book = books.find(b => b.id === bookId);
+            if (!book) return;
+
             const form = document.getElementById('form-edit-book');
             form.elements['bookId'].value = book.id;
             form.elements['title'].value = book.title;
             form.elements['publicationYear'].value = book.publicationYear || '';
             form.elements['form'].value = book.form || '';
-            form.elements['themes'].value = (book.themeIds || []).map(id => themes.find(t=>t.id===id)?.name).filter(Boolean).join(', ');
+            form.elements['themes'].value = getBookThemeIds(book)
+                .map(id => themes.find(t => t.id === id)?.name)
+                .filter(Boolean)
+                .join(', ');
             document.getElementById('book-edit-modal').showModal();
         }
+
         if (e.target.matches('.btn-remove')) {
-            const book = (await getBooks()).find(b => b.id === bookId);
-            const rCount = (await getReadingsByBookId(bookId)).length;
-            if (confirm(`Delete "${book?.title}" and its ${rCount} reading(s)?`)) { await deleteBook(bookId); await renderBooks(); }
+            const [books, readings] = await Promise.all([store.getBooks(), store.getReadings()]);
+            const book = books.find(b => b.id === bookId);
+            const rCount = readings.filter(r => getReadingBookId(r) === bookId).length;
+            if (confirm(`Delete "${book?.title}" and its ${rCount} reading(s)?`)) {
+                await store.deleteBook(bookId);
+                await refreshUI();
+            }
         }
     });
 
     document.getElementById('modal-readings-list')?.addEventListener('click', async (e) => {
         const readingId = parseInt(e.target.dataset.readingId, 10);
         const bookId = parseInt(document.getElementById('modal-book-id').value, 10);
+
         if (e.target.matches('.btn-delete-reading')) {
-            await deleteReading(readingId); await renderModalReadings(bookId); await renderBooks();
+            await store.deleteReading(readingId);
+            await renderModalReadings(bookId);
+            await refreshUI();
         }
+
         if (e.target.matches('.btn-edit-reading')) {
-            const reading = await getReadingById(readingId);
+            const reading = await store.getReadingById(readingId);
             const form = document.getElementById('form-modal-reading');
             document.getElementById('modal-form-title').textContent = `Edit Reading #${reading.id}`;
             document.getElementById('modal-reading-id').value = reading.id;
             document.getElementById('btn-save-modal-reading').textContent = 'Save Changes';
             document.getElementById('btn-cancel-edit').style.display = 'inline-block';
 
-            form.status.value = reading.status; form.status.dispatchEvent(new Event('change'));
+            form.status.value = reading.status;
+            form.status.dispatchEvent(new Event('change'));
             if (!form.yearRead.disabled) form.yearRead.value = reading.yearRead || '';
             if (!form.grade.disabled) form.grade.value = reading.grade || '';
             if (!form.priority.disabled) form.priority.value = reading.priority || '';
