@@ -180,6 +180,12 @@ async function deleteReading(id) {
   return apiRequest(`/readings/${id}`, { method: 'DELETE' });
 }
 
+// --- Reset ---
+
+async function resetData() {
+  return apiRequest('/reset', { method: 'POST' });
+}
+
 // --- Objeto Store ---
 
 const store = {
@@ -207,6 +213,8 @@ const store = {
   getReadingById,
   saveReading,
   deleteReading,
+
+  resetData,
 };
 
 export {
@@ -230,6 +238,7 @@ export {
   getReadingById,
   saveReading,
   deleteReading,
+  resetData,
   store,
 };
 
