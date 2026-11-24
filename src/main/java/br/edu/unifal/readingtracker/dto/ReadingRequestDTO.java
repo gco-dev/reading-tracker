@@ -10,7 +10,15 @@ public class ReadingRequestDTO {
     @NotBlank(message = "O status da leitura é obrigatório")
     private String status;
 
+    @Min(value = -5000, message = "O ano de leitura deve ser igual ou superior a -5000 (a.C.)")
+
+    @Max(value = 2027, message = "O ano de leitura não pode ultrapassar 2027")
+
     private Integer yearRead;
+
+    @Min(value = 0, message = "A nota mínima é 0.0")
+    @Max(value = 10, message = "A nota máxima é 10.0")
+
     private Double grade;
 
     public ReadingRequestDTO() {

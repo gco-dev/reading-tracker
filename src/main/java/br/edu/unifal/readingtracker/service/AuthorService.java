@@ -42,4 +42,6 @@ public class AuthorService {
 
         return authorRepository.save(author);
     }
+
+    public void delete(Long id) { authorRepository.deleteById(id); }
 }

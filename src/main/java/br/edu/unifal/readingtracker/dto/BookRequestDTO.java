@@ -9,6 +9,8 @@ public class BookRequestDTO {
     private String title;
 
     @NotNull(message = "O ano de publicação é obrigatório")
+    @Min(value = -5000, message = "O ano de publicação deve ser igual ou superior a -5000 (a.C.)")
+    @Max(value = 2027, message = "O ano de publicação não pode ultrapassar 2027")
     private Integer publicationYear;
 
     @NotEmpty(message = "Informe ao menos um autor")
@@ -17,16 +19,22 @@ public class BookRequestDTO {
     @NotEmpty(message = "Informe ao menos um tema")
     private List<Long> themeIds;
 
-    private String status;
+    @Min(value = -5000, message = "O ano de leitura deve ser igual ou superior a -5000 (a.C.)")
+    @Max(value = 2027, message = "O ano de leitura não pode ultrapassar 2027")
     private Integer yearRead;
+
+    @Min(value = 0, message = "A nota mínima é 0.0")
+    @Max(value = 10, message = "A nota máxima é 10.0")
     private Double grade;
+
+    private String status;
     private Integer priority;
 
     public BookRequestDTO() {
     }
 
     public BookRequestDTO(String title, Integer publicationYear, List<Long> authorIds, List<Long> themeIds,
-                          String status, Integer yearRead, Double grade, Integer priority) {
+            String status, Integer yearRead, Double grade, Integer priority) {
         this.title = title;
         this.publicationYear = publicationYear;
         this.authorIds = authorIds;
