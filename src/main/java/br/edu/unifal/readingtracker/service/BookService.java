@@ -2,93 +2,103 @@ package br.edu.unifal.readingtracker.service;
 
 import br.edu.unifal.readingtracker.domain.Author;
 import br.edu.unifal.readingtracker.domain.Book;
+import br.edu.unifal.readingtracker.domain.Reading;
 import br.edu.unifal.readingtracker.domain.Theme;
+import br.edu.unifal.readingtracker.dto.BookRequestDTO;
+import br.edu.unifal.readingtracker.repository.AuthorRepository;
 import br.edu.unifal.readingtracker.repository.BookRepository;
-import org.springframework.http.HttpStatus;
+import br.edu.unifal.readingtracker.repository.ReadingRepository;
+import br.edu.unifal.readingtracker.repository.ThemeRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class BookService {
 
     private final BookRepository bookRepository;
-    private final AuthorService authorService;
-    private final ThemeService themeService;
+    private final AuthorRepository authorRepository;
+    private final ThemeRepository themeRepository;
+    private final ReadingRepository readingRepository;
 
     public BookService(BookRepository bookRepository,
-                       AuthorService authorService,
-                       ThemeService themeService) {
+                       AuthorRepository authorRepository,
+                       ThemeRepository themeRepository,
+                       ReadingRepository readingRepository) {
         this.bookRepository = bookRepository;
-        this.authorService = authorService;
-        this.themeService = themeService;
+        this.authorRepository = authorRepository;
+        this.themeRepository = themeRepository;
+        this.readingRepository = readingRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<Book> findAll() {
         return bookRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
     public Book findById(Long id) {
         return bookRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Livro não encontrado com o ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Livro não encontrado com ID: " + id));
     }
 
     @Transactional
-    public Book create(Book book) {
-        book.setId(null);
-        book.setAuthors(resolveAuthors(book.getAuthors()));
-        book.setThemes(resolveThemes(book.getThemes()));
-        return bookRepository.save(book);
+    public Book create(BookRequestDTO dto) {
+        List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
+        List<Theme> themes = themeRepository.findAllById(dto.getThemeIds());
+
+        Book book = new Book();
+        book.setTitle(dto.getTitle());
+        book.setPublicationYear(dto.getPublicationYear());
+        book.setAuthors(authors);
+        book.setThemes(themes);
+
+        Book savedBook = bookRepository.save(book);
+
+        saveOrUpdateReading(savedBook, dto);
+
+        return savedBook;
     }
 
     @Transactional
-    public Book update(Long id, Book updatedBook) {
-        Book existing = findById(id);
-        existing.setTitle(updatedBook.getTitle());
-        existing.setPublicationYear(updatedBook.getPublicationYear());
-        existing.setForm(updatedBook.getForm());
-        existing.setMode(updatedBook.getMode());
-        existing.setContent(updatedBook.getContent());
-        existing.setAuthors(resolveAuthors(updatedBook.getAuthors()));
-        existing.setThemes(resolveThemes(updatedBook.getThemes()));
-        return bookRepository.save(existing);
+    public Book update(Long id, BookRequestDTO dto) {
+        Book book = findById(id);
+
+        List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
+        List<Theme> themes = themeRepository.findAllById(dto.getThemeIds());
+
+        book.setTitle(dto.getTitle());
+        book.setPublicationYear(dto.getPublicationYear());
+        book.setAuthors(authors);
+        book.setThemes(themes);
+
+        Book updatedBook = bookRepository.save(book);
+
+        saveOrUpdateReading(updatedBook, dto);
+
+        return updatedBook;
     }
 
     @Transactional
     public void delete(Long id) {
-        Book existing = findById(id);
-        bookRepository.delete(existing);
+        if (!bookRepository.existsById(id)) {
+            throw new EntityNotFoundException("Livro não encontrado com ID: " + id);
+        }
+        readingRepository.findById(id).ifPresent(readingRepository::delete);
+        bookRepository.deleteById(id);
     }
 
-    private List<Author> resolveAuthors(List<Author> authors) {
-        if (authors == null) {
-            return new ArrayList<>();
-        }
-        List<Author> resolved = new ArrayList<>();
-        for (Author author : authors) {
-            if (author != null && author.getId() != null) {
-                resolved.add(authorService.findById(author.getId()));
-            }
-        }
-        return resolved;
-    }
+    private void saveOrUpdateReading(Book book, BookRequestDTO dto) {
+        if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
+            Reading reading = readingRepository.findById(book.getId())
+                    .orElse(new Reading());
 
-    private List<Theme> resolveThemes(List<Theme> themes) {
-        if (themes == null) {
-            return new ArrayList<>();
+            reading.setBook(book);
+            reading.setStatus(dto.getStatus());
+            reading.setYearRead(dto.getYearRead());
+            reading.setGrade(dto.getGrade());
+
+            readingRepository.save(reading);
         }
-        List<Theme> resolved = new ArrayList<>();
-        for (Theme theme : themes) {
-            if (theme != null && theme.getId() != null) {
-                resolved.add(themeService.findById(theme.getId()));
-            }
-        }
-        return resolved;
     }
 }

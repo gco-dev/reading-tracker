@@ -1,18 +1,12 @@
 package br.edu.unifal.readingtracker.controller;
 
 import br.edu.unifal.readingtracker.domain.Reading;
+import br.edu.unifal.readingtracker.dto.ReadingRequestDTO;
 import br.edu.unifal.readingtracker.service.ReadingService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,29 +22,18 @@ public class ReadingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Reading>> findAll() {
+    public ResponseEntity<List<Reading>> getAllReadings() {
         return ResponseEntity.ok(readingService.findAll());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Reading> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(readingService.findById(id));
-    }
-
     @PostMapping
-    public ResponseEntity<Reading> create(@RequestBody Reading reading) {
-        Reading created = readingService.create(reading);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Reading> update(@PathVariable Long id, @RequestBody Reading reading) {
-        Reading updated = readingService.update(id, reading);
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<Reading> createOrUpdateReading(@Valid @RequestBody ReadingRequestDTO dto) {
+        Reading savedReading = readingService.createOrUpdate(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedReading);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteReading(@PathVariable Long id) {
         readingService.delete(id);
         return ResponseEntity.noContent().build();
     }

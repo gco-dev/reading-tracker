@@ -2,6 +2,14 @@
 
 const API_BASE_URL = '/api';
 
+const state = {
+  books: [],
+  authors: [],
+  themes: [],
+  countries: [],
+  readings: [],
+};
+
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -45,10 +53,32 @@ async function apiRequest(endpoint, options = {}) {
   return text || null;
 }
 
+// --- Inicialização ---
+
+async function init() {
+  const [books, authors, themes, countries, readings] = await Promise.all([
+    getBooks(),
+    getAuthors(),
+    getThemes(),
+    getCountries(),
+    getReadings(),
+  ]);
+
+  state.books = books || [];
+  state.authors = authors || [];
+  state.themes = themes || [];
+  state.countries = countries || [];
+  state.readings = readings || [];
+
+  return { ...state };
+}
+
 // --- Countries ---
 
 async function getCountries() {
-  return apiRequest('/countries', { method: 'GET' });
+  const data = await apiRequest('/countries', { method: 'GET' });
+  state.countries = data || [];
+  return state.countries;
 }
 
 async function getCountryById(id) {
@@ -75,7 +105,9 @@ async function deleteCountry(id) {
 // --- Themes ---
 
 async function getThemes() {
-  return apiRequest('/themes', { method: 'GET' });
+  const data = await apiRequest('/themes', { method: 'GET' });
+  state.themes = data || [];
+  return state.themes;
 }
 
 async function getThemeById(id) {
@@ -102,23 +134,24 @@ async function deleteTheme(id) {
 // --- Authors ---
 
 async function getAuthors() {
-  return apiRequest('/authors', { method: 'GET' });
+  const data = await apiRequest('/authors', { method: 'GET' });
+  state.authors = data || [];
+  return state.authors;
 }
 
 async function getAuthorById(id) {
   return apiRequest(`/authors/${id}`, { method: 'GET' });
 }
 
-async function saveAuthor(author) {
-  if (author && author.id) {
-    return apiRequest(`/authors/${author.id}`, {
-      method: 'PUT',
-      body: author,
-    });
-  }
+async function addAuthor(authorData) {
+  const payload = {
+    name: authorData.name,
+    countryId: Number(authorData.countryId),
+  };
+
   return apiRequest('/authors', {
     method: 'POST',
-    body: author,
+    body: payload,
   });
 }
 
@@ -128,24 +161,44 @@ async function deleteAuthor(id) {
 
 // --- Books ---
 
+function buildBookPayload(bookData) {
+  return {
+    title: bookData.title,
+    publicationYear: Number(bookData.publicationYear),
+    authorIds: (bookData.authorIds || []).map(Number),
+    themeIds: (bookData.themeIds || []).map(Number),
+    status: bookData.status || null,
+    yearRead: bookData.yearRead ? Number(bookData.yearRead) : null,
+    grade: bookData.grade ? Number(bookData.grade) : null,
+    priority: bookData.priority ? Number(bookData.priority) : null,
+  };
+}
+
 async function getBooks() {
-  return apiRequest('/books', { method: 'GET' });
+  const data = await apiRequest('/books', { method: 'GET' });
+  state.books = data || [];
+  return state.books;
 }
 
 async function getBookById(id) {
   return apiRequest(`/books/${id}`, { method: 'GET' });
 }
 
-async function saveBook(book) {
-  if (book && book.id) {
-    return apiRequest(`/books/${book.id}`, {
-      method: 'PUT',
-      body: book,
-    });
-  }
+async function addBook(bookData) {
+  const payload = buildBookPayload(bookData);
+
   return apiRequest('/books', {
     method: 'POST',
-    body: book,
+    body: payload,
+  });
+}
+
+async function updateBook(id, bookData) {
+  const payload = buildBookPayload(bookData);
+
+  return apiRequest(`/books/${id}`, {
+    method: 'PUT',
+    body: payload,
   });
 }
 
@@ -156,23 +209,26 @@ async function deleteBook(id) {
 // --- Readings ---
 
 async function getReadings() {
-  return apiRequest('/readings', { method: 'GET' });
+  const data = await apiRequest('/readings', { method: 'GET' });
+  state.readings = data || [];
+  return state.readings;
 }
 
 async function getReadingById(id) {
   return apiRequest(`/readings/${id}`, { method: 'GET' });
 }
 
-async function saveReading(reading) {
-  if (reading && reading.id) {
-    return apiRequest(`/readings/${reading.id}`, {
-      method: 'PUT',
-      body: reading,
-    });
-  }
+async function saveReading(readingData) {
+  const payload = {
+    bookId: Number(readingData.bookId),
+    status: readingData.status,
+    yearRead: readingData.yearRead ? Number(readingData.yearRead) : null,
+    grade: readingData.grade ? Number(readingData.grade) : null,
+  };
+
   return apiRequest('/readings', {
     method: 'POST',
-    body: reading,
+    body: payload,
   });
 }
 
@@ -183,12 +239,16 @@ async function deleteReading(id) {
 // --- Reset ---
 
 async function resetData() {
-  return apiRequest('/reset', { method: 'POST' });
+  await apiRequest('/reset', { method: 'POST' });
+  return init();
 }
 
 // --- Objeto Store ---
 
 const store = {
+  state,
+  init,
+
   getCountries,
   getCountryById,
   saveCountry,
@@ -201,12 +261,13 @@ const store = {
 
   getAuthors,
   getAuthorById,
-  saveAuthor,
+  addAuthor,
   deleteAuthor,
 
   getBooks,
   getBookById,
-  saveBook,
+  addBook,
+  updateBook,
   deleteBook,
 
   getReadings,
@@ -218,6 +279,8 @@ const store = {
 };
 
 export {
+  state,
+  init,
   getCountries,
   getCountryById,
   saveCountry,
@@ -228,11 +291,12 @@ export {
   deleteTheme,
   getAuthors,
   getAuthorById,
-  saveAuthor,
+  addAuthor,
   deleteAuthor,
   getBooks,
   getBookById,
-  saveBook,
+  addBook,
+  updateBook,
   deleteBook,
   getReadings,
   getReadingById,

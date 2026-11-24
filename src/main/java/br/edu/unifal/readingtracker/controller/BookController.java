@@ -1,18 +1,12 @@
 package br.edu.unifal.readingtracker.controller;
 
 import br.edu.unifal.readingtracker.domain.Book;
+import br.edu.unifal.readingtracker.dto.BookRequestDTO;
 import br.edu.unifal.readingtracker.service.BookService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,29 +22,29 @@ public class BookController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Book>> findAll() {
+    public ResponseEntity<List<Book>> getAllBooks() {
         return ResponseEntity.ok(bookService.findAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Book> findById(@PathVariable Long id) {
+    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
         return ResponseEntity.ok(bookService.findById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Book> create(@RequestBody Book book) {
-        Book created = bookService.create(book);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Book> createBook(@Valid @RequestBody BookRequestDTO dto) {
+        Book savedBook = bookService.create(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedBook);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Book> update(@PathVariable Long id, @RequestBody Book book) {
-        Book updated = bookService.update(id, book);
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<Book> updateBook(@PathVariable Long id, @Valid @RequestBody BookRequestDTO dto) {
+        Book updatedBook = bookService.update(id, dto);
+        return ResponseEntity.ok(updatedBook);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         bookService.delete(id);
         return ResponseEntity.noContent().build();
     }
