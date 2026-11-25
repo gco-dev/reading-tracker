@@ -4,62 +4,70 @@ import jakarta.validation.constraints.*;
 
 public class ReadingRequestDTO {
 
-    @NotNull(message = "O ID do livro é obrigatório")
-    private Long bookId;
+private Long id;
 
-    @NotBlank(message = "O status da leitura é obrigatório")
-    private String status;
+@NotNull(message = "Book ID is required")
+private Long bookId;
 
-    @Min(value = -5000, message = "O ano de leitura deve ser igual ou superior a -5000 (a.C.)")
+@NotBlank(message = "Reading status is required")
+private String status;
 
-    @Max(value = 2027, message = "O ano de leitura não pode ultrapassar 2027")
+@Min(value = -5000, message = "Year read must be -5000 (BC) or later")
+@Max(value = 2027, message = "Year read cannot be in the future")
+private Integer yearRead;
 
-    private Integer yearRead;
+@Min(value = 0, message = "Minimum grade is 0.0")
+@Max(value = 10, message = "Maximum grade is 10.0")
+private Double grade;
 
-    @Min(value = 0, message = "A nota mínima é 0.0")
-    @Max(value = 10, message = "A nota máxima é 10.0")
+public ReadingRequestDTO() {
+}
 
-    private Double grade;
+public ReadingRequestDTO(Long id, Long bookId, String status, Integer yearRead, Double grade) {
+this.id = id;
+this.bookId = bookId;
+this.status = status;
+this.yearRead = yearRead;
+this.grade = grade;
+}
 
-    public ReadingRequestDTO() {
-    }
+public Long getId() {
+return id;
+}
 
-    public ReadingRequestDTO(Long bookId, String status, Integer yearRead, Double grade) {
-        this.bookId = bookId;
-        this.status = status;
-        this.yearRead = yearRead;
-        this.grade = grade;
-    }
+public void setId(Long id) {
+this.id = id;
+}
 
-    public Long getBookId() {
-        return bookId;
-    }
+public Long getBookId() {
+return bookId;
+}
 
-    public void setBookId(Long bookId) {
-        this.bookId = bookId;
-    }
+public void setBookId(Long bookId) {
+this.bookId = bookId;
+}
 
-    public String getStatus() {
-        return status;
-    }
+public String getStatus() {
+return status;
+}
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+public void setStatus(String status) {
+this.status = status;
+}
 
-    public Integer getYearRead() {
-        return yearRead;
-    }
+public Integer getYearRead() {
+return yearRead;
+}
 
-    public void setYearRead(Integer yearRead) {
-        this.yearRead = yearRead;
-    }
+public void setYearRead(Integer yearRead) {
+this.yearRead = yearRead;
+}
 
-    public Double getGrade() {
-        return grade;
-    }
+public Double getGrade() {
+return grade;
+}
 
-    public void setGrade(Double grade) {
-        this.grade = grade;
-    }
+public void setGrade(Double grade) {
+this.grade = grade;
+}
 }

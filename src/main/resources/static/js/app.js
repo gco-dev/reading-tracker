@@ -3,7 +3,7 @@
 import store from './store.js';
 
 // =========================================================
-// ESTADO LOCAL DA APLICAÇÃO
+// APPLICATION STATE
 // =========================================================
 const appState = {
     books: [],
@@ -11,68 +11,62 @@ const appState = {
     readings: [],
     themes: [],
     countries: [],
-    sortAscending: true,
+    sortMode: 'az', // 'az' | 'newest'
 };
 
 // =========================================================
-// REFERÊNCIAS DO DOM
+// DOM REFERENCES
 // =========================================================
 const dom = {
-    // Tema
-    btnTheme: document.getElementById('btn-theme') || document.querySelector('.btn-theme'),
-
-    // Controles Principais
+    // Top Bar Controls
+    btnAddBook: document.getElementById('btn-add-book'),
     btnManageAuthors: document.getElementById('btn-manage-authors'),
-    btnViewLog: document.getElementById('btn-view-log'),
     btnSort: document.getElementById('btn-sort'),
     btnReset: document.getElementById('btn-reset'),
-    searchInput: document.getElementById('search-input') || document.getElementById('filter-search'),
-    filterStatus: document.getElementById('filter-status'),
-    filterAuthor: document.getElementById('filter-author'),
 
-    // Biblioteca
-    bookGrid: document.getElementById('book-grid') || document.querySelector('.book-grid'),
-    bookCounter: document.getElementById('book-counter') || document.querySelector('.book-counter'),
+    // Book Library
+    bookList: document.getElementById('book-list'),
+    bookCounter: document.getElementById('book-counter'),
 
-    // Formulário de Livro (#form-book)
-    bookAccordion: document.querySelector('.add-book-section details'),
-    formBook: document.getElementById('form-book') || document.getElementById('form-new-book'),
-    bookId: document.getElementById('book-id') || document.getElementById('edit-book-id'),
-    bookTitle: document.getElementById('book-title') || document.getElementById('new-title'),
-    bookYear: document.getElementById('book-year') || document.getElementById('new-year'),
-    bookAuthors: document.getElementById('book-authors') || document.getElementById('new-author'),
-    bookThemes: document.getElementById('book-themes') || document.getElementById('new-themes'),
-    bookStatus: document.getElementById('book-status') || document.getElementById('new-status'),
-    bookYearRead: document.getElementById('book-year-read') || document.getElementById('new-year-read'),
-    bookGrade: document.getElementById('book-grade') || document.getElementById('new-grade'),
-    bookPriority: document.getElementById('book-priority') || document.getElementById('new-priority'),
-
-    // Modal de Edição de Livro (caso separado)
-    bookEditModal: document.getElementById('book-edit-modal'),
-
-    // Formulário de Autor (#form-author)
-    authorManagerModal: document.getElementById('author-manager-modal'),
-    formAuthor: document.getElementById('form-author') || document.getElementById('form-manage-author'),
+    // 1. Author Modal (#modal-author)
+    modalAuthor: document.getElementById('modal-author'),
+    formAuthor: document.getElementById('form-author'),
+    authorId: document.getElementById('author-id'),
     authorName: document.getElementById('author-name'),
-    authorCountryId: document.getElementById('author-country-id') || document.getElementById('author-country'),
-    authorsTableBody: document.getElementById('authors-table-body') || document.querySelector('#author-manager-modal tbody'),
+    authorCountryId: document.getElementById('author-country-id'),
+    btnCancelAuthorEdit: document.getElementById('btn-cancel-author-edit'),
+    authorTableBody: document.querySelector('#author-table tbody'),
 
-    // Formulário de Leitura (#form-reading)
-    readingModal: document.getElementById('reading-modal'),
-    formReading: document.getElementById('form-reading') || document.getElementById('form-modal-reading'),
-    readingBookId: document.getElementById('reading-book-id') || document.getElementById('modal-book-id'),
-    readingStatus: document.getElementById('reading-status') || document.getElementById('modal-status'),
-    readingYear: document.getElementById('reading-year') || document.getElementById('modal-year-read'),
-    readingGrade: document.getElementById('reading-grade') || document.getElementById('modal-grade'),
-    readingsHistoryList: document.getElementById('readings-history-list') || document.querySelector('#reading-modal .readings-history-list'),
+    // 2. Book Modal (#modal-book)
+    modalBook: document.getElementById('modal-book'),
+    modalBookHeader: document.getElementById('modal-book-header'),
+    formBook: document.getElementById('form-book'),
+    bookId: document.getElementById('book-id'),
+    bookTitle: document.getElementById('book-title'),
+    bookYear: document.getElementById('book-year'),
+    bookAuthors: document.getElementById('book-authors'),
+    bookThemes: document.getElementById('book-themes'),
+    bookStatus: document.getElementById('book-status'),
+    bookYearRead: document.getElementById('book-year-read'),
+    bookGrade: document.getElementById('book-grade'),
+    bookPriority: document.getElementById('book-priority'),
+    btnSaveBook: document.getElementById('btn-save-book'),
 
-    // Modal de Log Geral de Leituras
-    readingLogModal: document.getElementById('reading-log-modal'),
-    readingLogTableBody: document.getElementById('reading-log-body') || document.querySelector('#reading-log-modal tbody'),
+    // 3. Reading Modal (#modal-reading)
+    modalReading: document.getElementById('modal-reading'),
+    modalReadingBookTitle: document.getElementById('modal-reading-book-title'),
+    modalReadingsList: document.getElementById('modal-readings-list'),
+    formReading: document.getElementById('form-reading'),
+    readingBookId: document.getElementById('reading-book-id'),
+    readingId: document.getElementById('reading-id'),
+    readingStatus: document.getElementById('reading-status'),
+    readingYear: document.getElementById('reading-year'),
+    readingGrade: document.getElementById('reading-grade'),
+    btnCancelReadingEdit: document.getElementById('btn-cancel-reading-edit'),
 };
 
 // =========================================================
-// HELPERS DE MODAL E TRATAMENTO DE ERROS
+// MODAL & FORM HELPERS
 // =========================================================
 function openModal(modal) {
     if (!modal) return;
@@ -107,42 +101,56 @@ function clearFormSelects(form) {
 
 function getSelectedNumericIds(selectElement) {
     if (!selectElement) return [];
-    if (selectElement.multiple) {
-        return Array.from(selectElement.selectedOptions)
-            .map(opt => Number(opt.value))
-            .filter(id => !Number.isNaN(id) && id > 0);
-    }
-    const val = Number(selectElement.value);
-    return !Number.isNaN(val) && val > 0 ? [val] : [];
+    return Array.from(selectElement.selectedOptions)
+        .map(opt => Number(opt.value))
+        .filter(id => !Number.isNaN(id) && id > 0);
 }
 
-function handleApiError(error, fallbackMessage = 'Ocorreu um erro ao processar a requisição.') {
+// =========================================================
+// YEAR FORMATTING (NEGATIVE YEARS -> BC)
+// =========================================================
+function formatYear(year) {
+    if (year === null || year === undefined || year === '') return '';
+    const numericYear = Number(year);
+    if (Number.isNaN(numericYear)) return String(year);
+    if (numericYear < 0) {
+        return `${Math.abs(numericYear)} BC`;
+    }
+    return `${numericYear}`;
+}
+
+// =========================================================
+// ERROR HANDLING & ALERTS
+// =========================================================
+function handleApiError(error, fallbackMessage = 'An unexpected error occurred while communicating with the server.') {
     console.error('[Ex-Libris Error]:', error);
 
     if (error?.errors && typeof error.errors === 'object') {
-        const fieldMessages = Array.isArray(error.errors)
-            ? error.errors.map(e => (typeof e === 'string' ? e : `${e.field ? `${e.field}: ` : ''}${e.defaultMessage || e.message}`))
+        const details = Array.isArray(error.errors)
+            ? error.errors.map(err => (typeof err === 'string' ? err : `${err.field ? `${err.field}: ` : ''}${err.defaultMessage || err.message}`))
             : Object.entries(error.errors).map(([field, msg]) => `${field}: ${msg}`);
 
-        if (fieldMessages.length > 0) {
-            alert(`⚠️ Corrija os campos abaixo:\n\n• ${fieldMessages.join('\n• ')}`);
+        if (details.length > 0) {
+            alert(`Validation Error:\n\n• ${details.join('\n• ')}`);
             return;
         }
     }
 
-    const message = error?.message || (typeof error === 'string' ? error : fallbackMessage);
+    const rawMessage = error?.message || (typeof error === 'string' ? error : fallbackMessage);
 
-    if (message.includes('400')) {
-        alert(`⚠️ Dados inválidos. Verifique os campos obrigatórios e tente novamente.\n\nDetalhes: ${message}`);
-    } else if (message.includes('500')) {
-        alert(`⚠️ Erro interno no servidor. Tente novamente em instantes.\n\nDetalhes: ${message}`);
+    if (rawMessage.includes('400')) {
+        alert(`Validation Error (400 Bad Request):\nPlease check all required fields and input constraints.\n\nDetails: ${rawMessage}`);
+    } else if (rawMessage.includes('404')) {
+        alert(`Resource Not Found (404):\nThe requested record could not be found.\n\nDetails: ${rawMessage}`);
+    } else if (rawMessage.includes('500')) {
+        alert(`Server Error (500):\nAn internal server error occurred. Please try again later.\n\nDetails: ${rawMessage}`);
     } else {
-        alert(`⚠️ ${message}`);
+        alert(`Error:\n${rawMessage}`);
     }
 }
 
 // =========================================================
-// CARREGAMENTO INICIAL
+// INITIAL DATA LOAD
 // =========================================================
 async function init() {
     try {
@@ -160,93 +168,110 @@ async function init() {
         appState.themes = Array.isArray(themes) ? themes : [];
         appState.countries = Array.isArray(countries) ? countries : [];
 
-        populateAuthorDropdowns();
         populateCountryDropdown();
+        populateAuthorDropdown();
         populateThemeDropdown();
         renderBooks();
         renderAuthorsTable();
-        renderReadingLog();
     } catch (error) {
-        handleApiError(error, 'Não foi possível carregar os dados iniciais da API.');
+        handleApiError(error, 'Failed to load initial library data from the API.');
     }
 }
 
 // =========================================================
-// TEMA (LIGHT / DARK)
+// POPULATE MODAL SELECTORS (SORTED ALPHABETICALLY)
 // =========================================================
-function initTheme() {
-    const savedTheme = localStorage.getItem('exlibris-theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-
-    dom.btnTheme?.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('exlibris-theme', next);
-        updateThemeIcon(next);
-    });
+function getCountryNameById(countryId) {
+    if (!countryId) return '';
+    const country = appState.countries.find(c => Number(c.id) === Number(countryId));
+    return country ? country.name : '';
 }
 
-function updateThemeIcon(theme) {
-    if (!dom.btnTheme) return;
-    dom.btnTheme.textContent = theme === 'dark' ? '☀️' : '🌙';
-    dom.btnTheme.setAttribute('aria-label', theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro');
-}
-
-// =========================================================
-// POPULAÇÃO DE DROPDOWNS
-// =========================================================
-function populateAuthorDropdowns() {
-    const optionsHtml = appState.authors
-        .map(author => `<option value="${author.id}">${author.name}</option>`)
-        .join('');
-
-    if (dom.bookAuthors) {
-        const selectedValues = Array.from(dom.bookAuthors.selectedOptions).map(o => o.value);
-        const placeholder = dom.bookAuthors.multiple ? '' : '<option value="">Selecione um autor...</option>';
-        dom.bookAuthors.innerHTML = `${placeholder}${optionsHtml}`;
-        Array.from(dom.bookAuthors.options).forEach(opt => {
-            if (selectedValues.includes(opt.value)) opt.selected = true;
-        });
+function getAuthorCountryName(author) {
+    if (!author) return '';
+    if (typeof author.country === 'object' && author.country?.name) {
+        return author.country.name;
     }
-
-    if (dom.filterAuthor) {
-        const previousVal = dom.filterAuthor.value;
-        dom.filterAuthor.innerHTML = `<option value="">Todos os autores</option>${optionsHtml}`;
-        if (previousVal) dom.filterAuthor.value = previousVal;
+    if (typeof author.country === 'string' && author.country.trim() !== '') {
+        return author.country;
     }
+    if (author.countryName) {
+        return author.countryName;
+    }
+    if (author.countryId) {
+        return getCountryNameById(author.countryId);
+    }
+    return '';
 }
 
 function populateCountryDropdown() {
     if (!dom.authorCountryId) return;
-    const previousVal = dom.authorCountryId.value;
-    const optionsHtml = appState.countries
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+
+    const previousValue = dom.authorCountryId.value;
+    const sortedCountries = [...appState.countries].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
+    );
+
+    const optionsHtml = sortedCountries
+        .map(country => `<option value="${country.id}">${country.name}</option>`)
         .join('');
-    dom.authorCountryId.innerHTML = `<option value="">Selecione um país...</option>${optionsHtml}`;
-    if (previousVal) dom.authorCountryId.value = previousVal;
+
+    dom.authorCountryId.innerHTML = `<option value="">Select Country...</option>${optionsHtml}`;
+    if (previousValue) {
+        dom.authorCountryId.value = previousValue;
+    }
+}
+
+function populateAuthorDropdown() {
+    if (!dom.bookAuthors) return;
+
+    const selectedValues = Array.from(dom.bookAuthors.selectedOptions).map(opt => opt.value);
+    const sortedAuthors = [...appState.authors].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
+    );
+
+    dom.bookAuthors.innerHTML = sortedAuthors
+        .map(author => {
+            const countryName = getAuthorCountryName(author);
+            const label = countryName ? `${author.name} (${countryName})` : author.name;
+            return `<option value="${author.id}">${label}</option>`;
+        })
+        .join('');
+
+    Array.from(dom.bookAuthors.options).forEach(opt => {
+        if (selectedValues.includes(opt.value)) {
+            opt.selected = true;
+        }
+    });
 }
 
 function populateThemeDropdown() {
-    if (!dom.bookThemes || dom.bookThemes.tagName !== 'SELECT') return;
-    const selectedValues = Array.from(dom.bookThemes.selectedOptions).map(o => o.value);
-    const optionsHtml = appState.themes
-        .map(t => `<option value="${t.id}">${t.name}</option>`)
+    if (!dom.bookThemes) return;
+
+    const selectedValues = Array.from(dom.bookThemes.selectedOptions).map(opt => opt.value);
+    const sortedThemes = [...appState.themes].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
+    );
+
+    dom.bookThemes.innerHTML = sortedThemes
+        .map(theme => `<option value="${theme.id}">${theme.name}</option>`)
         .join('');
-    const placeholder = dom.bookThemes.multiple ? '' : '<option value="">Selecione um tema...</option>';
-    dom.bookThemes.innerHTML = `${placeholder}${optionsHtml}`;
+
     Array.from(dom.bookThemes.options).forEach(opt => {
-        if (selectedValues.includes(opt.value)) opt.selected = true;
+        if (selectedValues.includes(opt.value)) {
+            opt.selected = true;
+        }
     });
 }
 
 // =========================================================
-// HELPERS DE EXIBIÇÃO
+// DISPLAY HELPERS
 // =========================================================
 function extractBookAuthorIds(book) {
     if (!book) return [];
-    if (Array.isArray(book.authorIds) && book.authorIds.length > 0) return book.authorIds.map(Number);
+    if (Array.isArray(book.authorIds) && book.authorIds.length > 0) {
+        return book.authorIds.map(Number);
+    }
     if (Array.isArray(book.authors) && book.authors.length > 0) {
         return book.authors.map(a => Number(typeof a === 'object' ? a.id : a)).filter(Boolean);
     }
@@ -255,7 +280,9 @@ function extractBookAuthorIds(book) {
 
 function extractBookThemeIds(book) {
     if (!book) return [];
-    if (Array.isArray(book.themeIds) && book.themeIds.length > 0) return book.themeIds.map(Number);
+    if (Array.isArray(book.themeIds) && book.themeIds.length > 0) {
+        return book.themeIds.map(Number);
+    }
     if (Array.isArray(book.themes) && book.themes.length > 0) {
         return book.themes.map(t => Number(typeof t === 'object' ? t.id : t)).filter(Boolean);
     }
@@ -264,7 +291,10 @@ function extractBookThemeIds(book) {
 
 function getBookAuthorNames(book) {
     if (Array.isArray(book.authors) && book.authors.length > 0) {
-        return book.authors.map(a => (typeof a === 'object' ? a.name : a)).filter(Boolean).join(', ');
+        return book.authors
+            .map(a => (typeof a === 'object' ? a.name : a))
+            .filter(Boolean)
+            .join(', ');
     }
     const ids = extractBookAuthorIds(book);
     if (ids.length > 0) {
@@ -273,13 +303,23 @@ function getBookAuthorNames(book) {
             .filter(Boolean);
         if (names.length > 0) return names.join(', ');
     }
-    return 'Autor desconhecido';
+    return 'Unknown Author';
 }
 
 function formatBookThemes(book) {
     if (!book) return '';
-    if (Array.isArray(book.themes)) {
-        return book.themes.map(t => (typeof t === 'object' ? t.name : t)).filter(Boolean).join(', ');
+    if (Array.isArray(book.themes) && book.themes.length > 0) {
+        return book.themes
+            .map(t => (typeof t === 'object' ? t.name : t))
+            .filter(Boolean)
+            .join(', ');
+    }
+    const ids = extractBookThemeIds(book);
+    if (ids.length > 0) {
+        return ids
+            .map(id => appState.themes.find(t => Number(t.id) === id)?.name)
+            .filter(Boolean)
+            .join(', ');
     }
     return '';
 }
@@ -299,95 +339,82 @@ function getStatusClass(status) {
         WANT_TO_READ: 'status-want-to-read',
         READING: 'status-reading',
         ABANDONED: 'status-abandoned',
+        UNREAD: 'status-unread',
     };
-    return map[status] || 'status-unknown';
+    return map[status] || 'status-unread';
 }
 
 function getStatusLabel(status) {
     const map = {
-        READ: 'Lido',
-        PAUSED: 'Pausado',
-        WANT_TO_READ: 'Quero Ler',
-        READING: 'Lendo',
-        ABANDONED: 'Abandonado',
+        READ: 'Read',
+        PAUSED: 'Paused',
+        WANT_TO_READ: 'Want to Read',
+        READING: 'Reading',
+        ABANDONED: 'Abandoned',
+        UNREAD: 'Unread',
     };
-    return map[status] || 'Sem Leitura';
+    return map[status] || 'Unread';
 }
 
 // =========================================================
-// RENDERIZAÇÃO DE LIVROS
+// SORTING & RENDERING BOOKS
 // =========================================================
-function getFilteredBooks() {
-    let books = [...appState.books];
+function getSortedBooks() {
+    const books = [...appState.books];
 
-    const query = dom.searchInput?.value.trim().toLowerCase() || '';
-    const statusFilter = dom.filterStatus?.value || '';
-    const authorFilter = dom.filterAuthor?.value || '';
-
-    if (query) {
-        books = books.filter(book =>
-            (book.title || '').toLowerCase().includes(query) ||
-            getBookAuthorNames(book).toLowerCase().includes(query) ||
-            formatBookThemes(book).toLowerCase().includes(query)
+    if (appState.sortMode === 'newest') {
+        books.sort((a, b) => Number(b.publicationYear ?? -99999) - Number(a.publicationYear ?? -99999));
+    } else {
+        books.sort((a, b) =>
+            (a.title || '').localeCompare(b.title || '', 'en', { sensitivity: 'base' })
         );
     }
-
-    if (statusFilter) {
-        books = books.filter(book => {
-            const latest = getLatestReadingForBook(book.id);
-            const currentStatus = book.status || latest?.status || '';
-            return currentStatus === statusFilter;
-        });
-    }
-
-    if (authorFilter) {
-        books = books.filter(book =>
-            extractBookAuthorIds(book).includes(Number(authorFilter))
-        );
-    }
-
-    books.sort((a, b) => {
-        const titleA = (a.title || '').toLowerCase();
-        const titleB = (b.title || '').toLowerCase();
-        return appState.sortAscending ? titleA.localeCompare(titleB) : titleB.localeCompare(titleA);
-    });
 
     return books;
 }
 
-function renderBooks() {
-    if (!dom.bookGrid) return;
+function toggleSortMode() {
+    appState.sortMode = appState.sortMode === 'az' ? 'newest' : 'az';
+    if (dom.btnSort) {
+        dom.btnSort.textContent = appState.sortMode === 'az' ? 'Sort: A-Z' : 'Sort: Newest';
+    }
+    renderBooks();
+}
 
-    const books = getFilteredBooks();
+function renderBooks() {
+    if (!dom.bookList) return;
+
+    const books = getSortedBooks();
     if (dom.bookCounter) {
         dom.bookCounter.textContent = `(${books.length})`;
     }
 
     if (books.length === 0) {
-        dom.bookGrid.innerHTML = `<div class="empty-message">Nenhum livro encontrado.</div>`;
+        dom.bookList.innerHTML = `<div class="empty-message">No books found in your collection.</div>`;
         return;
     }
 
-    dom.bookGrid.innerHTML = books.map(book => {
+    dom.bookList.innerHTML = books.map(book => {
         const latestReading = getLatestReadingForBook(book.id);
-        const status = book.status || latestReading?.status || 'UNKNOWN';
+        const status = book.status || latestReading?.status || 'UNREAD';
         const authorNames = getBookAuthorNames(book);
         const themesText = formatBookThemes(book);
+        const formattedPubYear = formatYear(book.publicationYear);
 
         return `
             <article class="book-card" data-id="${book.id}">
                 <div>
                     <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
                     <h3>${book.title}</h3>
-                    <p><strong>Autor:</strong> ${authorNames}</p>
-                    ${book.publicationYear ? `<p><strong>Ano:</strong> ${book.publicationYear}</p>` : ''}
-                    ${themesText ? `<p><strong>Temas:</strong> ${themesText}</p>` : ''}
-                    ${book.priority ? `<p><strong>Prioridade:</strong> ${book.priority}</p>` : ''}
+                    <p><strong>Author:</strong> ${authorNames}</p>
+                    ${formattedPubYear ? `<p><strong>Published:</strong> ${formattedPubYear}</p>` : ''}
+                    ${themesText ? `<p><strong>Themes:</strong> ${themesText}</p>` : ''}
+                    ${book.priority ? `<p><strong>Priority:</strong> ${book.priority}/5</p>` : ''}
                 </div>
                 <div class="card-actions">
-                    <button type="button" class="btn-readings" data-id="${book.id}">📖 Leituras</button>
-                    <button type="button" class="btn-edit-book" data-id="${book.id}">✏️ Editar</button>
-                    <button type="button" class="btn-remove" data-id="${book.id}">🗑️ Excluir</button>
+                    <button type="button" class="btn-readings" data-id="${book.id}">Readings</button>
+                    <button type="button" class="btn-edit-book" data-id="${book.id}">Edit</button>
+                    <button type="button" class="btn-remove" data-id="${book.id}">Delete</button>
                 </div>
             </article>
         `;
@@ -395,67 +422,88 @@ function renderBooks() {
 }
 
 // =========================================================
-// 1. FORMULÁRIO DE LIVRO (#form-book)
+// 1. AUTHOR FORM (#form-author) & MANAGEMENT
 // =========================================================
-async function handleBookSubmit(event) {
-    event.preventDefault();
+function renderAuthorsTable() {
+    if (!dom.authorTableBody) return;
 
-    const id = dom.bookId?.value?.trim() || '';
-    const title = dom.bookTitle?.value.trim() || '';
-    const publicationYear = dom.bookYear?.value ? Number(dom.bookYear.value) : null;
-    const authorIds = getSelectedNumericIds(dom.bookAuthors);
-    const themeIds = getSelectedNumericIds(dom.bookThemes);
-    const status = dom.bookStatus?.value || null;
-    const yearRead = dom.bookYearRead?.value ? Number(dom.bookYearRead.value) : null;
-    const grade = dom.bookGrade?.value !== '' && dom.bookGrade?.value !== undefined ? Number(dom.bookGrade.value) : null;
-    const priority = dom.bookPriority?.value ? Number(dom.bookPriority.value) : null;
+    const sortedAuthors = [...appState.authors].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
+    );
 
-    // Validação rápida no cliente antes de enviar ao Spring Boot
-    const clientErrors = [];
-    if (!title) clientErrors.push('O título é obrigatório.');
-    if (!publicationYear) clientErrors.push('O ano de publicação é obrigatório.');
-    if (authorIds.length === 0) clientErrors.push('Informe ao menos um autor.');
-    if (themeIds.length === 0) clientErrors.push('Informe ao menos um tema.');
-
-    if (clientErrors.length > 0) {
-        alert(`⚠️ Corrija os campos abaixo:\n\n• ${clientErrors.join('\n• ')}`);
+    if (sortedAuthors.length === 0) {
+        dom.authorTableBody.innerHTML = `<tr><td colspan="4" class="empty-message">No authors registered yet.</td></tr>`;
         return;
     }
 
-    const bookData = {
-        title,
-        publicationYear,
-        authorIds,
-        themeIds,
-        status,
-        yearRead,
-        grade,
-        priority,
-    };
+    dom.authorTableBody.innerHTML = sortedAuthors.map(author => {
+        const countryName = getAuthorCountryName(author) || '—';
+        return `
+            <tr>
+                <td>${author.id}</td>
+                <td>${author.name}</td>
+                <td>${countryName}</td>
+                <td>
+                    <button type="button" class="btn-small-del btn-delete-author" data-id="${author.id}">Delete</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function handleAuthorSubmit(event) {
+    event.preventDefault();
+
+    const name = dom.authorName?.value.trim() || '';
+    const countryId = dom.authorCountryId?.value ? Number(dom.authorCountryId.value) : null;
+
+    if (!name || !countryId) {
+        alert('Validation Error:\nPlease provide both the author name and country.');
+        return;
+    }
 
     try {
-        if (id) {
-            await store.updateBook(id, bookData);
-        } else {
-            await store.addBook(bookData);
-        }
+        await store.addAuthor({ name, countryId });
 
-        dom.formBook.reset();
-        clearFormSelects(dom.formBook);
-        if (dom.bookId) dom.bookId.value = '';
-        if (dom.bookAccordion) dom.bookAccordion.open = false;
-        if (dom.bookEditModal) closeModal(dom.bookEditModal);
+        dom.formAuthor.reset();
+        clearFormSelects(dom.formAuthor);
+        if (dom.authorId) dom.authorId.value = '';
 
         await init();
     } catch (error) {
-        handleApiError(error, 'Erro ao salvar o livro.');
+        handleApiError(error, 'Failed to save author.');
     }
 }
 
-function populateBookFormForEdit(bookId) {
+async function handleDeleteAuthor(authorId) {
+    if (!confirm('Are you sure you want to delete this author?')) return;
+
+    try {
+        await store.deleteAuthor(authorId);
+        await init();
+    } catch (error) {
+        handleApiError(error, 'Unable to delete author. Ensure no books are currently linked to this author.');
+    }
+}
+
+// =========================================================
+// 2. BOOK FORM (#form-book) - CREATE & UPDATE
+// =========================================================
+function openAddBookModal() {
+    if (dom.formBook) {
+        dom.formBook.reset();
+        clearFormSelects(dom.formBook);
+    }
+    if (dom.bookId) dom.bookId.value = '';
+    if (dom.modalBookHeader) dom.modalBookHeader.textContent = 'Add Book';
+    if (dom.btnSaveBook) dom.btnSaveBook.textContent = 'Save Book';
+    openModal(dom.modalBook);
+}
+
+function openEditBookModal(bookId) {
     const book = appState.books.find(b => Number(b.id) === Number(bookId));
     if (!book) {
-        handleApiError('Livro não encontrado para edição.');
+        handleApiError('Book not found for editing.');
         return;
     }
 
@@ -463,9 +511,9 @@ function populateBookFormForEdit(bookId) {
 
     if (dom.bookId) dom.bookId.value = book.id;
     if (dom.bookTitle) dom.bookTitle.value = book.title || '';
-    if (dom.bookYear) dom.bookYear.value = book.publicationYear || '';
-    if (dom.bookStatus) dom.bookStatus.value = book.status || latestReading?.status || '';
-    if (dom.bookYearRead) dom.bookYearRead.value = latestReading?.yearRead || '';
+    if (dom.bookYear) dom.bookYear.value = book.publicationYear ?? '';
+    if (dom.bookStatus) dom.bookStatus.value = book.status || latestReading?.status || 'UNREAD';
+    if (dom.bookYearRead) dom.bookYearRead.value = latestReading?.yearRead ?? '';
     if (dom.bookGrade) dom.bookGrade.value = latestReading?.grade ?? '';
     if (dom.bookPriority) dom.bookPriority.value = book.priority ?? '';
 
@@ -483,74 +531,133 @@ function populateBookFormForEdit(bookId) {
         });
     }
 
-    if (dom.bookEditModal) {
-        openModal(dom.bookEditModal);
-    } else if (dom.bookAccordion) {
-        dom.bookAccordion.open = true;
-        dom.formBook?.scrollIntoView({ behavior: 'smooth' });
+    if (dom.modalBookHeader) dom.modalBookHeader.textContent = 'Edit Book';
+    if (dom.btnSaveBook) dom.btnSaveBook.textContent = 'Update Book';
+    openModal(dom.modalBook);
+}
+
+async function handleBookSubmit(event) {
+    event.preventDefault();
+
+    const id = dom.bookId?.value.trim() || '';
+    const title = dom.bookTitle?.value.trim() || '';
+    const publicationYear = dom.bookYear?.value !== '' ? Number(dom.bookYear.value) : null;
+    const authorIds = getSelectedNumericIds(dom.bookAuthors);
+    const themeIds = getSelectedNumericIds(dom.bookThemes);
+    const status = dom.bookStatus?.value || null;
+    const yearRead = dom.bookYearRead?.value !== '' ? Number(dom.bookYearRead.value) : null;
+    const grade = dom.bookGrade?.value !== '' ? Number(dom.bookGrade.value) : null;
+    const priority = dom.bookPriority?.value !== '' ? Number(dom.bookPriority.value) : null;
+
+    const validationErrors = [];
+    if (!title) validationErrors.push('Book title is required.');
+    if (publicationYear === null || Number.isNaN(publicationYear)) validationErrors.push('Publication year is required.');
+    if (authorIds.length === 0) validationErrors.push('Please select at least one author.');
+    if (themeIds.length === 0) validationErrors.push('Please select at least one theme.');
+
+    if (validationErrors.length > 0) {
+        alert(`Validation Error:\n\n• ${validationErrors.join('\n• ')}`);
+        return;
+    }
+
+    const bookData = {
+        title,
+        publicationYear,
+        authorIds,
+        themeIds,
+        status,
+        yearRead,
+        grade,
+        priority,
+    };
+
+    try {
+        if (id) {
+            await store.updateBook(Number(id), bookData);
+        } else {
+            await store.addBook(bookData);
+        }
+
+        dom.formBook.reset();
+        clearFormSelects(dom.formBook);
+        if (dom.bookId) dom.bookId.value = '';
+        closeModal(dom.modalBook);
+
+        await init();
+    } catch (error) {
+        handleApiError(error, 'Failed to save book.');
     }
 }
 
 async function handleDeleteBook(bookId) {
-    if (!confirm('Tem certeza que deseja excluir este livro?')) return;
+    if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
         await store.deleteBook(bookId);
         await init();
     } catch (error) {
-        handleApiError(error, 'Erro ao excluir o livro.');
+        handleApiError(error, 'Failed to delete book.');
     }
 }
 
 // =========================================================
-// 2. FORMULÁRIO DE LEITURA (#form-reading)
+// 3. READING FORM (#form-reading) & HISTORY
 // =========================================================
 function openReadingModal(bookId) {
+    const book = appState.books.find(b => Number(b.id) === Number(bookId));
+    if (dom.modalReadingBookTitle) {
+        dom.modalReadingBookTitle.textContent = book ? `Readings: ${book.title}` : 'Book Readings';
+    }
+
     if (dom.formReading) {
         dom.formReading.reset();
         clearFormSelects(dom.formReading);
     }
+    if (dom.readingId) dom.readingId.value = '';
     if (dom.readingBookId) dom.readingBookId.value = bookId;
 
     renderBookReadingsHistory(bookId);
-    openModal(dom.readingModal);
+    openModal(dom.modalReading);
 }
 
 function renderBookReadingsHistory(bookId) {
-    if (!dom.readingsHistoryList) return;
+    if (!dom.modalReadingsList) return;
 
-    const readings = appState.readings.filter(r => Number(r.book?.id ?? r.bookId) === Number(bookId));
+    const readings = appState.readings.filter(r => {
+        const rBookId = r.book?.id ?? r.bookId;
+        return Number(rBookId) === Number(bookId);
+    });
+
     if (readings.length === 0) {
-        dom.readingsHistoryList.innerHTML = `<p class="empty-message">Nenhuma leitura registrada para este livro.</p>`;
+        dom.modalReadingsList.innerHTML = `<p class="empty-message">No readings recorded for this book yet.</p>`;
         return;
     }
 
-    dom.readingsHistoryList.innerHTML = readings.map(r => `
-        <div class="reading-history-item" data-id="${r.id}">
-            <div class="reading-item-header">
-                <span class="status-pill ${getStatusClass(r.status)}">${getStatusLabel(r.status)}</span>
-                <button type="button" class="btn-small-del btn-delete-reading" data-id="${r.id}" data-book-id="${bookId}">Excluir</button>
+    dom.modalReadingsList.innerHTML = readings.map(reading => {
+        const formattedYearRead = formatYear(reading.yearRead);
+        return `
+            <div class="reading-history-item" data-id="${reading.id}">
+                <div class="reading-item-header">
+                    <span class="status-pill ${getStatusClass(reading.status)}">${getStatusLabel(reading.status)}</span>
+                    <button type="button" class="btn-small-del btn-delete-reading" data-id="${reading.id}" data-book-id="${bookId}">Delete</button>
+                </div>
+                ${formattedYearRead ? `<p><strong>Year Read:</strong> ${formattedYearRead}</p>` : ''}
+                ${reading.grade !== null && reading.grade !== undefined ? `<p><strong>Grade:</strong> ${reading.grade} / 10</p>` : ''}
             </div>
-            ${r.yearRead ? `<p><strong>Ano:</strong> ${r.yearRead}</p>` : ''}
-            ${r.grade !== null && r.grade !== undefined ? `<p><strong>Nota:</strong> ${r.grade}</p>` : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function handleReadingSubmit(event) {
     event.preventDefault();
 
     const bookId = dom.readingBookId?.value ? Number(dom.readingBookId.value) : null;
-    const status = dom.readingStatus?.value.trim() || '';
-    const yearRead = dom.readingYear?.value ? Number(dom.readingYear.value) : null;
-    const grade = dom.readingGrade?.value !== '' && dom.readingGrade?.value !== undefined ? Number(dom.readingGrade.value) : null;
+    const status = dom.readingStatus?.value || '';
+    const yearRead = dom.readingYear?.value !== '' ? Number(dom.readingYear.value) : null;
+    const grade = dom.readingGrade?.value !== '' ? Number(dom.readingGrade.value) : null;
 
-    const clientErrors = [];
-    if (!bookId) clientErrors.push('O ID do livro é obrigatório.');
-    if (!status) clientErrors.push('O status da leitura é obrigatório.');
-
-    if (clientErrors.length > 0) {
-        alert(`⚠️ Corrija os campos abaixo:\n\n• ${clientErrors.join('\n• ')}`);
+    if (!bookId || !status) {
+        alert('Validation Error:\nBook ID and reading status are required.');
         return;
     }
 
@@ -566,144 +673,48 @@ async function handleReadingSubmit(event) {
 
         dom.formReading.reset();
         clearFormSelects(dom.formReading);
-        if (dom.readingBookId) dom.readingBookId.value = '';
-        closeModal(dom.readingModal);
+        if (dom.readingId) dom.readingId.value = '';
+        if (dom.readingBookId) dom.readingBookId.value = bookId;
 
         await init();
+        renderBookReadingsHistory(bookId);
     } catch (error) {
-        handleApiError(error, 'Erro ao salvar a leitura.');
+        handleApiError(error, 'Failed to save reading record.');
     }
 }
 
 async function handleDeleteReading(readingId, bookId) {
-    if (!confirm('Deseja excluir este registro de leitura?')) return;
+    if (!confirm('Are you sure you want to delete this reading record?')) return;
 
     try {
         await store.deleteReading(readingId);
         await init();
-        if (bookId && dom.readingModal?.classList.contains('active')) {
+        if (bookId && dom.modalReading?.classList.contains('active')) {
             renderBookReadingsHistory(bookId);
         }
     } catch (error) {
-        handleApiError(error, 'Erro ao excluir a leitura.');
-    }
-}
-
-function renderReadingLog() {
-    if (!dom.readingLogTableBody) return;
-
-    if (appState.readings.length === 0) {
-        dom.readingLogTableBody.innerHTML = `<tr><td colspan="5" class="empty-message">Nenhuma leitura registrada.</td></tr>`;
-        return;
-    }
-
-    dom.readingLogTableBody.innerHTML = appState.readings.map(r => {
-        const rBookId = r.book?.id ?? r.bookId;
-        const book = appState.books.find(b => Number(b.id) === Number(rBookId));
-        const bookTitle = book ? book.title : (r.book?.title || `Livro #${rBookId}`);
-        return `
-            <tr>
-                <td>${bookTitle}</td>
-                <td><span class="status-pill ${getStatusClass(r.status)}">${getStatusLabel(r.status)}</span></td>
-                <td>${r.yearRead || '-'}</td>
-                <td>${r.grade ?? '-'}</td>
-                <td>
-                    <button type="button" class="btn-small-del btn-delete-reading" data-id="${r.id}" data-book-id="${rBookId}">Excluir</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// =========================================================
-// 3. FORMULÁRIO DE AUTOR (#form-author)
-// =========================================================
-function renderAuthorsTable() {
-    if (!dom.authorsTableBody) return;
-
-    if (appState.authors.length === 0) {
-        dom.authorsTableBody.innerHTML = `<tr><td colspan="2" class="empty-message">Nenhum autor cadastrado.</td></tr>`;
-        return;
-    }
-
-    dom.authorsTableBody.innerHTML = appState.authors.map(author => `
-        <tr>
-            <td>${author.name} ${author.country?.name ? `(${author.country.name})` : ''}</td>
-            <td>
-                <button type="button" class="btn-small-del btn-delete-author" data-id="${author.id}">Excluir</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-async function handleAuthorSubmit(event) {
-    event.preventDefault();
-
-    const name = dom.authorName?.value.trim() || '';
-    const countryId = dom.authorCountryId?.value ? Number(dom.authorCountryId.value) : null;
-
-    const clientErrors = [];
-    if (!name) clientErrors.push('O nome do autor é obrigatório.');
-    if (!countryId) clientErrors.push('O país do autor é obrigatório.');
-
-    if (clientErrors.length > 0) {
-        alert(`⚠️ Corrija os campos abaixo:\n\n• ${clientErrors.join('\n• ')}`);
-        return;
-    }
-
-    const authorData = {
-        name,
-        countryId,
-    };
-
-    try {
-        await store.addAuthor(authorData);
-
-        dom.formAuthor.reset();
-        clearFormSelects(dom.formAuthor);
-        closeModal(dom.authorManagerModal);
-
-        await init();
-    } catch (error) {
-        handleApiError(error, 'Erro ao cadastrar o autor.');
-    }
-}
-
-async function handleDeleteAuthor(authorId) {
-    if (!confirm('Deseja excluir este autor?')) return;
-
-    try {
-        await store.deleteAuthor(authorId);
-        await init();
-    } catch (error) {
-        handleApiError(error, 'Não foi possível excluir o autor (verifique se há livros vinculados).');
+        handleApiError(error, 'Failed to delete reading record.');
     }
 }
 
 // =========================================================
-// 4. RESET DE DADOS (#btn-reset)
+// 4. RESET DATA (#btn-reset)
 // =========================================================
 async function handleReset() {
-    const confirmed = confirm(
-        'Tem certeza que deseja restaurar os dados iniciais do sistema?\n\nTodas as alterações atuais serão substituídas.'
-    );
-    if (!confirmed) return;
+    if (!confirm('Are you sure you want to reset all data to the original seed state?')) {
+        return;
+    }
 
     try {
         await store.resetData();
-
-        if (dom.searchInput) dom.searchInput.value = '';
-        if (dom.filterStatus) dom.filterStatus.value = '';
-        if (dom.filterAuthor) dom.filterAuthor.value = '';
-        appState.sortAscending = true;
-
+        appState.sortMode = 'az';
+        if (dom.btnSort) {
+            dom.btnSort.textContent = 'Sort: A-Z';
+        }
         await init();
-        alert('✅ Dados restaurados com sucesso!');
+        alert('Database successfully reset to original seed data!');
     } catch (error) {
-        handleApiError(
-            error,
-            'Não foi possível restaurar os dados automaticamente. Verifique se o backend Spring Boot está em execução e tente novamente.'
-        );
+        handleApiError(error, 'Failed to reset database to original seed data.');
     }
 }
 
@@ -711,81 +722,77 @@ async function handleReset() {
 // EVENT LISTENERS
 // =========================================================
 function bindEvents() {
-    // Formulários
-    dom.formBook?.addEventListener('submit', handleBookSubmit);
-    dom.formReading?.addEventListener('submit', handleReadingSubmit);
-    dom.formAuthor?.addEventListener('submit', handleAuthorSubmit);
+    // Top Bar Buttons
+    dom.btnAddBook?.addEventListener('click', openAddBookModal);
 
-    // Botões Principais
     dom.btnManageAuthors?.addEventListener('click', () => {
         renderAuthorsTable();
-        openModal(dom.authorManagerModal);
+        openModal(dom.modalAuthor);
     });
 
-    dom.btnViewLog?.addEventListener('click', () => {
-        renderReadingLog();
-        openModal(dom.readingLogModal);
-    });
-
-    dom.btnSort?.addEventListener('click', () => {
-        appState.sortAscending = !appState.sortAscending;
-        renderBooks();
-    });
-
+    dom.btnSort?.addEventListener('click', toggleSortMode);
     dom.btnReset?.addEventListener('click', handleReset);
 
-    // Filtros
-    dom.searchInput?.addEventListener('input', renderBooks);
-    dom.filterStatus?.addEventListener('change', renderBooks);
-    dom.filterAuthor?.addEventListener('change', renderBooks);
+    // Forms
+    dom.formAuthor?.addEventListener('submit', handleAuthorSubmit);
+    dom.formBook?.addEventListener('submit', handleBookSubmit);
+    dom.formReading?.addEventListener('submit', handleReadingSubmit);
 
-    // Delegação nos Cards de Livros
-    dom.bookGrid?.addEventListener('click', event => {
+    // Cancel Buttons inside Modals
+    dom.btnCancelAuthorEdit?.addEventListener('click', () => {
+        dom.formAuthor?.reset();
+        clearFormSelects(dom.formAuthor);
+        if (dom.authorId) dom.authorId.value = '';
+        closeModal(dom.modalAuthor);
+    });
+
+    dom.btnCancelReadingEdit?.addEventListener('click', () => {
+        dom.formReading?.reset();
+        clearFormSelects(dom.formReading);
+        if (dom.readingId) dom.readingId.value = '';
+        closeModal(dom.modalReading);
+    });
+
+    // Book Card Actions (Event Delegation)
+    dom.bookList?.addEventListener('click', event => {
+        const readingsBtn = event.target.closest('.btn-readings');
+        if (readingsBtn) {
+            openReadingModal(readingsBtn.dataset.id);
+            return;
+        }
+
         const editBtn = event.target.closest('.btn-edit-book');
         if (editBtn) {
-            populateBookFormForEdit(editBtn.dataset.id);
+            openEditBookModal(editBtn.dataset.id);
             return;
         }
 
         const removeBtn = event.target.closest('.btn-remove');
         if (removeBtn) {
             handleDeleteBook(removeBtn.dataset.id);
-            return;
-        }
-
-        const readingsBtn = event.target.closest('.btn-readings');
-        if (readingsBtn) {
-            openReadingModal(readingsBtn.dataset.id);
         }
     });
 
-    // Delegação no Histórico de Leituras e Log Geral
-    dom.readingsHistoryList?.addEventListener('click', event => {
-        const delBtn = event.target.closest('.btn-delete-reading');
-        if (delBtn) {
-            handleDeleteReading(delBtn.dataset.id, delBtn.dataset.bookId);
+    // Reading History Delete Action
+    dom.modalReadingsList?.addEventListener('click', event => {
+        const deleteBtn = event.target.closest('.btn-delete-reading');
+        if (deleteBtn) {
+            handleDeleteReading(deleteBtn.dataset.id, deleteBtn.dataset.bookId);
         }
     });
 
-    dom.readingLogTableBody?.addEventListener('click', event => {
-        const delBtn = event.target.closest('.btn-delete-reading');
-        if (delBtn) {
-            handleDeleteReading(delBtn.dataset.id, delBtn.dataset.bookId);
+    // Author Table Delete Action
+    dom.authorTableBody?.addEventListener('click', event => {
+        const deleteBtn = event.target.closest('.btn-delete-author');
+        if (deleteBtn) {
+            handleDeleteAuthor(deleteBtn.dataset.id);
         }
     });
 
-    // Delegação na Tabela de Autores
-    dom.authorsTableBody?.addEventListener('click', event => {
-        const delBtn = event.target.closest('.btn-delete-author');
-        if (delBtn) {
-            handleDeleteAuthor(delBtn.dataset.id);
-        }
-    });
-
-    // Fechar Modais
+    // Close Modals via Close Buttons
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
-            const modal = btn.closest('dialog, .modal');
+            const modal = btn.closest('dialog, .custom-modal');
             closeModal(modal);
         });
     });
@@ -795,7 +802,6 @@ function bindEvents() {
 // BOOTSTRAP
 // =========================================================
 document.addEventListener('DOMContentLoaded', () => {
-    initTheme();
     bindEvents();
     init();
 });

@@ -8,7 +8,6 @@ import br.edu.unifal.readingtracker.repository.CountryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
@@ -43,5 +42,19 @@ public class AuthorService {
         return authorRepository.save(author);
     }
 
-    public void delete(Long id) { authorRepository.deleteById(id); }
+    @Transactional
+    public void delete(Long id) {
+        if (!authorRepository.existsById(id)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Author not found with ID: " + id);
+        }
+        try {
+            authorRepository.deleteById(id);
+            authorRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Cannot delete author linked to books. Please delete or reassign their books first.");
+        }
+    }
 }

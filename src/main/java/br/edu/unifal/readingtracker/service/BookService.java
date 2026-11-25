@@ -24,9 +24,9 @@ public class BookService {
     private final ReadingRepository readingRepository;
 
     public BookService(BookRepository bookRepository,
-                       AuthorRepository authorRepository,
-                       ThemeRepository themeRepository,
-                       ReadingRepository readingRepository) {
+            AuthorRepository authorRepository,
+            ThemeRepository themeRepository,
+            ReadingRepository readingRepository) {
         this.bookRepository = bookRepository;
         this.authorRepository = authorRepository;
         this.themeRepository = themeRepository;
@@ -90,9 +90,15 @@ public class BookService {
 
     private void saveOrUpdateReading(Book book, BookRequestDTO dto) {
         if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
-            Reading reading = readingRepository.findById(book.getId())
-                    .orElse(new Reading());
+            if (dto.getYearRead() != null && book.getPublicationYear() != null
+                    && dto.getYearRead() < book.getPublicationYear()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Year read (" + dto.getYearRead() + ") cannot be earlier than publication year ("
+                                + book.getPublicationYear() + ").");
+            }
 
+            Reading reading = new Reading();
             reading.setBook(book);
             reading.setStatus(dto.getStatus());
             reading.setYearRead(dto.getYearRead());
