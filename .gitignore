@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Pasta do Banco de Dados H2 (NUNCA deve ir para o Git)
+data/
+*.mv.db
+*.trace.db
