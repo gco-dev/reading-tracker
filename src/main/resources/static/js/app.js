@@ -24,9 +24,17 @@ const dom = {
     btnSort: document.getElementById('btn-sort'),
     btnReset: document.getElementById('btn-reset'),
 
-    // Book Library
+    // Optional Notification Banner
+    notificationBanner: document.getElementById('notification-banner'),
+
+    // Book Library & Stats
     bookList: document.getElementById('book-list'),
     bookCounter: document.getElementById('book-counter'),
+    statTotalBooks: document.getElementById('stat-total-books'),
+    statBooksRead: document.getElementById('stat-books-read'),
+    statBooksReading: document.getElementById('stat-books-reading'),
+    statBooksWantToRead: document.getElementById('stat-books-want-to-read'),
+    statTotalAuthors: document.getElementById('stat-total-authors'),
 
     // 1. Author Modal (#modal-author)
     modalAuthor: document.getElementById('modal-author'),
@@ -44,8 +52,8 @@ const dom = {
     bookId: document.getElementById('book-id'),
     bookTitle: document.getElementById('book-title'),
     bookYear: document.getElementById('book-year'),
-    bookAuthors: document.getElementById('book-authors'),
-    bookThemes: document.getElementById('book-themes'),
+    bookAuthorsChips: document.getElementById('book-authors-chips'),
+    bookThemesChips: document.getElementById('book-themes-chips'),
     bookStatus: document.getElementById('book-status'),
     bookYearRead: document.getElementById('book-year-read'),
     bookGrade: document.getElementById('book-grade'),
@@ -64,6 +72,8 @@ const dom = {
     readingGrade: document.getElementById('reading-grade'),
     btnCancelReadingEdit: document.getElementById('btn-cancel-reading-edit'),
 };
+
+let notificationTimeoutId = null;
 
 // =========================================================
 // MODAL & FORM HELPERS
@@ -99,10 +109,51 @@ function clearFormSelects(form) {
     });
 }
 
-function getSelectedNumericIds(selectElement) {
-    if (!selectElement) return [];
-    return Array.from(selectElement.selectedOptions)
-        .map(opt => Number(opt.value))
+function clearFormErrors(formElement) {
+    if (!formElement) return;
+
+    formElement.querySelectorAll('.field-error').forEach(span => {
+        span.textContent = '';
+    });
+
+    formElement
+        .querySelectorAll('.input-error, .is-invalid, .field-invalid, [aria-invalid="true"]')
+        .forEach(element => {
+            element.classList.remove('input-error', 'is-invalid', 'field-invalid');
+            element.removeAttribute('aria-invalid');
+        });
+}
+
+function setFieldError(formElement, fieldName, message) {
+    const scope = formElement || document;
+    const escapedField =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+            ? CSS.escape(fieldName)
+            : fieldName.replace(/"/g, '\\"');
+
+    const errorSpan = scope.querySelector(`.field-error[data-error-for="${escapedField}"]`);
+    if (errorSpan) {
+        errorSpan.textContent = message;
+    }
+
+    const inputByName = scope.querySelector(`[name="${escapedField}"]`);
+    const fieldGroupControl = errorSpan
+        ?.closest('.form-group, .field-group, label')
+        ?.querySelector('input, select, textarea, .chips-container');
+
+    const targetControl = inputByName || fieldGroupControl;
+    if (targetControl) {
+        targetControl.classList.add('input-error', 'is-invalid');
+        targetControl.setAttribute('aria-invalid', 'true');
+    }
+
+    return Boolean(errorSpan);
+}
+
+function getSelectedNumericIds(chipsContainer) {
+    if (!chipsContainer) return [];
+    return Array.from(chipsContainer.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(input => Number(input.value))
         .filter(id => !Number.isNaN(id) && id > 0);
 }
 
@@ -120,38 +171,135 @@ function formatYear(year) {
 }
 
 // =========================================================
-// ERROR HANDLING & ALERTS
+// ERROR HANDLING & NOTIFICATIONS
 // =========================================================
-function handleApiError(error, fallbackMessage = 'An unexpected error occurred while communicating with the server.') {
+function showNotification(message, type = 'error') {
+    if (dom.notificationBanner) {
+        dom.notificationBanner.textContent = message;
+        dom.notificationBanner.className = `notification-banner notification-${type}`;
+        dom.notificationBanner.classList.remove('hidden');
+
+        if (notificationTimeoutId) {
+            clearTimeout(notificationTimeoutId);
+        }
+        notificationTimeoutId = setTimeout(() => {
+            dom.notificationBanner?.classList.add('hidden');
+        }, 6000);
+        return;
+    }
+
+    alert(message);
+}
+
+function extractFieldErrors(error) {
+    const fieldErrors = {};
+    const rawErrors = error?.payload?.errors ?? error?.errors ?? null;
+
+    if (!rawErrors) return fieldErrors;
+
+    if (Array.isArray(rawErrors)) {
+        rawErrors.forEach(item => {
+            if (item && typeof item === 'object' && item.field) {
+                const msg = item.defaultMessage || item.message || String(item);
+                fieldErrors[item.field] = fieldErrors[item.field]
+                    ? `${fieldErrors[item.field]} ${msg}`
+                    : msg;
+            }
+        });
+    } else if (typeof rawErrors === 'object') {
+        const entries = Object.entries(rawErrors);
+        entries.forEach(([field, msg]) => {
+            if (field === 'message' && typeof msg === 'string' && entries.length === 1) {
+                return;
+            }
+            if (msg !== null && msg !== undefined) {
+                fieldErrors[field] = Array.isArray(msg) ? msg.join(' ') : String(msg);
+            }
+        });
+    }
+
+    return fieldErrors;
+}
+
+function handleApiError(
+    error,
+    formOrFallback = null,
+    fallbackMessage = 'An unexpected error occurred while communicating with the server.'
+) {
     console.error('[Ex-Libris Error]:', error);
 
-    if (error?.errors && typeof error.errors === 'object') {
-        const details = Array.isArray(error.errors)
-            ? error.errors.map(err => (typeof err === 'string' ? err : `${err.field ? `${err.field}: ` : ''}${err.defaultMessage || err.message}`))
-            : Object.entries(error.errors).map(([field, msg]) => `${field}: ${msg}`);
+    const formElement = formOrFallback instanceof HTMLElement ? formOrFallback : null;
+    const effectiveFallback =
+        typeof formOrFallback === 'string' && formOrFallback.trim() !== ''
+            ? formOrFallback
+            : fallbackMessage;
 
-        if (details.length > 0) {
-            alert(`Validation Error:\n\n• ${details.join('\n• ')}`);
-            return;
+    if (typeof error === 'string') {
+        showNotification(error || effectiveFallback, 'error');
+        return;
+    }
+
+    const isErrorObject = error instanceof Error || (error && typeof error === 'object');
+    if (!isErrorObject) {
+        showNotification(effectiveFallback, 'error');
+        return;
+    }
+
+    const activeForm =
+        formElement || document.querySelector('dialog[open] form, .custom-modal.active form');
+
+    if (activeForm) {
+        clearFormErrors(activeForm);
+    }
+
+    const fieldErrors = extractFieldErrors(error);
+    const fieldErrorEntries = Object.entries(fieldErrors);
+    let renderedInlineCount = 0;
+
+    fieldErrorEntries.forEach(([fieldName, message]) => {
+        if (setFieldError(activeForm || document, fieldName, message)) {
+            renderedInlineCount += 1;
         }
+    });
+
+    const apiMessage =
+        error.payload?.message ||
+        error.message ||
+        effectiveFallback;
+
+    if (error.status === 409) {
+        showNotification(apiMessage, 'error');
+        return;
     }
 
-    const rawMessage = error?.message || (typeof error === 'string' ? error : fallbackMessage);
+    if (fieldErrorEntries.length > 0) {
+        const detailsList = fieldErrorEntries
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join('\n• ');
 
-    if (rawMessage.includes('400')) {
-        alert(`Validation Error (400 Bad Request):\nPlease check all required fields and input constraints.\n\nDetails: ${rawMessage}`);
-    } else if (rawMessage.includes('404')) {
-        alert(`Resource Not Found (404):\nThe requested record could not be found.\n\nDetails: ${rawMessage}`);
-    } else if (rawMessage.includes('500')) {
-        alert(`Server Error (500):\nAn internal server error occurred. Please try again later.\n\nDetails: ${rawMessage}`);
-    } else {
-        alert(`Error:\n${rawMessage}`);
+        const alertText =
+            renderedInlineCount === fieldErrorEntries.length
+                ? `${apiMessage}\n\nPlease review the highlighted fields.`
+                : `Validation Error:\n\n• ${detailsList}`;
+
+        showNotification(alertText, 'error');
+        return;
     }
+
+    showNotification(apiMessage, 'error');
 }
 
 // =========================================================
-// INITIAL DATA LOAD
+// STATE SYNC & INITIAL DATA LOAD
 // =========================================================
+function syncStateFromStore() {
+    appState.books = Array.isArray(store.state.books) ? [...store.state.books] : [];
+    appState.authors = Array.isArray(store.state.authors) ? [...store.state.authors] : [];
+    appState.readings = Array.isArray(store.state.readings) ? [...store.state.readings] : [];
+    appState.themes = Array.isArray(store.state.themes) ? [...store.state.themes] : [];
+    appState.countries = Array.isArray(store.state.countries) ? [...store.state.countries] : [];
+}
+
 async function init() {
     try {
         const [books, authors, readings, themes, countries] = await Promise.all([
@@ -172,6 +320,7 @@ async function init() {
         populateAuthorDropdown();
         populateThemeDropdown();
         renderBooks();
+        renderStats();
         renderAuthorsTable();
     } catch (error) {
         handleApiError(error, 'Failed to load initial library data from the API.');
@@ -222,46 +371,46 @@ function populateCountryDropdown() {
     }
 }
 
-function populateAuthorDropdown() {
-    if (!dom.bookAuthors) return;
+function populateAuthorDropdown(selectedIds = []) {
+    if (!dom.bookAuthorsChips) return;
 
-    const selectedValues = Array.from(dom.bookAuthors.selectedOptions).map(opt => opt.value);
+    const selectedSet = new Set(selectedIds.map(Number));
     const sortedAuthors = [...appState.authors].sort((a, b) =>
         (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
     );
 
-    dom.bookAuthors.innerHTML = sortedAuthors
+    dom.bookAuthorsChips.innerHTML = sortedAuthors
         .map(author => {
             const countryName = getAuthorCountryName(author);
             const label = countryName ? `${author.name} (${countryName})` : author.name;
-            return `<option value="${author.id}">${label}</option>`;
+            const isSelected = selectedSet.has(Number(author.id));
+
+            return `<label class="chip-pill ${isSelected ? 'selected' : ''}">
+                <input type="checkbox" value="${author.id}" ${isSelected ? 'checked' : ''}>
+                <span>${label}</span>
+            </label>`;
         })
         .join('');
-
-    Array.from(dom.bookAuthors.options).forEach(opt => {
-        if (selectedValues.includes(opt.value)) {
-            opt.selected = true;
-        }
-    });
 }
 
-function populateThemeDropdown() {
-    if (!dom.bookThemes) return;
+function populateThemeDropdown(selectedIds = []) {
+    if (!dom.bookThemesChips) return;
 
-    const selectedValues = Array.from(dom.bookThemes.selectedOptions).map(opt => opt.value);
+    const selectedSet = new Set(selectedIds.map(Number));
     const sortedThemes = [...appState.themes].sort((a, b) =>
         (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
     );
 
-    dom.bookThemes.innerHTML = sortedThemes
-        .map(theme => `<option value="${theme.id}">${theme.name}</option>`)
-        .join('');
+    dom.bookThemesChips.innerHTML = sortedThemes
+        .map(theme => {
+            const isSelected = selectedSet.has(Number(theme.id));
 
-    Array.from(dom.bookThemes.options).forEach(opt => {
-        if (selectedValues.includes(opt.value)) {
-            opt.selected = true;
-        }
-    });
+            return `<label class="chip-pill ${isSelected ? 'selected' : ''}">
+                <input type="checkbox" value="${theme.id}" ${isSelected ? 'checked' : ''}>
+                <span>${theme.name}</span>
+            </label>`;
+        })
+        .join('');
 }
 
 // =========================================================
@@ -332,6 +481,11 @@ function getLatestReadingForBook(bookId) {
     return bookReadings.length > 0 ? bookReadings[bookReadings.length - 1] : null;
 }
 
+function getEffectiveBookStatus(book) {
+    const latestReading = getLatestReadingForBook(book.id);
+    return book.status || latestReading?.status || 'UNREAD';
+}
+
 function getStatusClass(status) {
     const map = {
         READ: 'status-read',
@@ -357,13 +511,50 @@ function getStatusLabel(status) {
 }
 
 // =========================================================
-// SORTING & RENDERING BOOKS
+// STATS, SORTING & RENDERING BOOKS
 // =========================================================
+function renderStats() {
+    const totalBooks = appState.books.length;
+    const totalAuthors = appState.authors.length;
+
+    let readCount = 0;
+    let readingCount = 0;
+    let wantToReadCount = 0;
+
+    appState.books.forEach(book => {
+        const status = getEffectiveBookStatus(book);
+        if (status === 'READ') readCount += 1;
+        else if (status === 'READING') readingCount += 1;
+        else if (status === 'WANT_TO_READ') wantToReadCount += 1;
+    });
+
+    if (dom.bookCounter) {
+        dom.bookCounter.textContent = `(${totalBooks})`;
+    }
+    if (dom.statTotalBooks) {
+        dom.statTotalBooks.textContent = String(totalBooks);
+    }
+    if (dom.statBooksRead) {
+        dom.statBooksRead.textContent = String(readCount);
+    }
+    if (dom.statBooksReading) {
+        dom.statBooksReading.textContent = String(readingCount);
+    }
+    if (dom.statBooksWantToRead) {
+        dom.statBooksWantToRead.textContent = String(wantToReadCount);
+    }
+    if (dom.statTotalAuthors) {
+        dom.statTotalAuthors.textContent = String(totalAuthors);
+    }
+}
+
 function getSortedBooks() {
     const books = [...appState.books];
 
     if (appState.sortMode === 'newest') {
-        books.sort((a, b) => Number(b.publicationYear ?? -99999) - Number(a.publicationYear ?? -99999));
+        books.sort(
+            (a, b) => Number(b.publicationYear ?? -99999) - Number(a.publicationYear ?? -99999)
+        );
     } else {
         books.sort((a, b) =>
             (a.title || '').localeCompare(b.title || '', 'en', { sensitivity: 'base' })
@@ -394,14 +585,14 @@ function renderBooks() {
         return;
     }
 
-    dom.bookList.innerHTML = books.map(book => {
-        const latestReading = getLatestReadingForBook(book.id);
-        const status = book.status || latestReading?.status || 'UNREAD';
-        const authorNames = getBookAuthorNames(book);
-        const themesText = formatBookThemes(book);
-        const formattedPubYear = formatYear(book.publicationYear);
+    dom.bookList.innerHTML = books
+        .map(book => {
+            const status = getEffectiveBookStatus(book);
+            const authorNames = getBookAuthorNames(book);
+            const themesText = formatBookThemes(book);
+            const formattedPubYear = formatYear(book.publicationYear);
 
-        return `
+            return `
             <article class="book-card" data-id="${book.id}">
                 <div>
                     <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
@@ -418,12 +609,25 @@ function renderBooks() {
                 </div>
             </article>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 // =========================================================
 // 1. AUTHOR FORM (#form-author) & MANAGEMENT
 // =========================================================
+function openAuthorModal() {
+    if (dom.formAuthor) {
+        dom.formAuthor.reset();
+        clearFormSelects(dom.formAuthor);
+        clearFormErrors(dom.formAuthor);
+    }
+    if (dom.authorId) dom.authorId.value = '';
+    populateCountryDropdown();
+    renderAuthorsTable();
+    openModal(dom.modalAuthor);
+}
+
 function renderAuthorsTable() {
     if (!dom.authorTableBody) return;
 
@@ -436,9 +640,10 @@ function renderAuthorsTable() {
         return;
     }
 
-    dom.authorTableBody.innerHTML = sortedAuthors.map(author => {
-        const countryName = getAuthorCountryName(author) || '—';
-        return `
+    dom.authorTableBody.innerHTML = sortedAuthors
+        .map(author => {
+            const countryName = getAuthorCountryName(author) || '—';
+            return `
             <tr>
                 <td>${author.id}</td>
                 <td>${author.name}</td>
@@ -448,30 +653,47 @@ function renderAuthorsTable() {
                 </td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 async function handleAuthorSubmit(event) {
     event.preventDefault();
+    clearFormErrors(dom.formAuthor);
 
     const name = dom.authorName?.value.trim() || '';
     const countryId = dom.authorCountryId?.value ? Number(dom.authorCountryId.value) : null;
 
-    if (!name || !countryId) {
-        alert('Validation Error:\nPlease provide both the author name and country.');
+    const validationErrors = [];
+    if (!name) {
+        setFieldError(dom.formAuthor, 'name', 'Author name is required.');
+        validationErrors.push('Author name is required.');
+    }
+    if (!countryId) {
+        setFieldError(dom.formAuthor, 'countryId', 'Country is required.');
+        validationErrors.push('Country is required.');
+    }
+
+    if (validationErrors.length > 0) {
+        showNotification(`Validation Error:\n\n• ${validationErrors.join('\n• ')}`, 'error');
         return;
     }
 
     try {
         await store.addAuthor({ name, countryId });
+        await store.getAuthors();
+        syncStateFromStore();
 
         dom.formAuthor.reset();
         clearFormSelects(dom.formAuthor);
+        clearFormErrors(dom.formAuthor);
         if (dom.authorId) dom.authorId.value = '';
 
-        await init();
+        populateAuthorDropdown();
+        renderAuthorsTable();
+        renderStats();
     } catch (error) {
-        handleApiError(error, 'Failed to save author.');
+        handleApiError(error, dom.formAuthor, 'Failed to save author.');
     }
 }
 
@@ -480,9 +702,25 @@ async function handleDeleteAuthor(authorId) {
 
     try {
         await store.deleteAuthor(authorId);
-        await init();
+        syncStateFromStore();
+
+        populateAuthorDropdown();
+        renderAuthorsTable();
+        renderBooks();
+        renderStats();
     } catch (error) {
-        handleApiError(error, 'Unable to delete author. Ensure no books are currently linked to this author.');
+        if (error?.status === 409) {
+            const conflictMessage =
+                error.payload?.message ||
+                error.message ||
+                'Cannot delete this author because there are books linked to them.';
+            handleApiError(conflictMessage);
+            return;
+        }
+        handleApiError(
+            error,
+            'Unable to delete author. Ensure no books are currently linked to this author.'
+        );
     }
 }
 
@@ -493,8 +731,11 @@ function openAddBookModal() {
     if (dom.formBook) {
         dom.formBook.reset();
         clearFormSelects(dom.formBook);
+        clearFormErrors(dom.formBook);
     }
     if (dom.bookId) dom.bookId.value = '';
+    populateAuthorDropdown([]);
+    populateThemeDropdown([]);
     if (dom.modalBookHeader) dom.modalBookHeader.textContent = 'Add Book';
     if (dom.btnSaveBook) dom.btnSaveBook.textContent = 'Save Book';
     openModal(dom.modalBook);
@@ -505,6 +746,10 @@ function openEditBookModal(bookId) {
     if (!book) {
         handleApiError('Book not found for editing.');
         return;
+    }
+
+    if (dom.formBook) {
+        clearFormErrors(dom.formBook);
     }
 
     const latestReading = getLatestReadingForBook(book.id);
@@ -518,18 +763,9 @@ function openEditBookModal(bookId) {
     if (dom.bookPriority) dom.bookPriority.value = book.priority ?? '';
 
     const bookAuthorIds = extractBookAuthorIds(book);
-    if (dom.bookAuthors) {
-        Array.from(dom.bookAuthors.options).forEach(opt => {
-            opt.selected = bookAuthorIds.includes(Number(opt.value));
-        });
-    }
-
     const bookThemeIds = extractBookThemeIds(book);
-    if (dom.bookThemes) {
-        Array.from(dom.bookThemes.options).forEach(opt => {
-            opt.selected = bookThemeIds.includes(Number(opt.value));
-        });
-    }
+    populateAuthorDropdown(bookAuthorIds);
+    populateThemeDropdown(bookThemeIds);
 
     if (dom.modalBookHeader) dom.modalBookHeader.textContent = 'Edit Book';
     if (dom.btnSaveBook) dom.btnSaveBook.textContent = 'Update Book';
@@ -538,25 +774,49 @@ function openEditBookModal(bookId) {
 
 async function handleBookSubmit(event) {
     event.preventDefault();
+    clearFormErrors(dom.formBook);
 
     const id = dom.bookId?.value.trim() || '';
     const title = dom.bookTitle?.value.trim() || '';
     const publicationYear = dom.bookYear?.value !== '' ? Number(dom.bookYear.value) : null;
-    const authorIds = getSelectedNumericIds(dom.bookAuthors);
-    const themeIds = getSelectedNumericIds(dom.bookThemes);
+    const authorIds = getSelectedNumericIds(dom.bookAuthorsChips);
+    const themeIds = getSelectedNumericIds(dom.bookThemesChips);
     const status = dom.bookStatus?.value || null;
     const yearRead = dom.bookYearRead?.value !== '' ? Number(dom.bookYearRead.value) : null;
     const grade = dom.bookGrade?.value !== '' ? Number(dom.bookGrade.value) : null;
     const priority = dom.bookPriority?.value !== '' ? Number(dom.bookPriority.value) : null;
 
     const validationErrors = [];
-    if (!title) validationErrors.push('Book title is required.');
-    if (publicationYear === null || Number.isNaN(publicationYear)) validationErrors.push('Publication year is required.');
-    if (authorIds.length === 0) validationErrors.push('Please select at least one author.');
-    if (themeIds.length === 0) validationErrors.push('Please select at least one theme.');
+    if (!title) {
+        setFieldError(dom.formBook, 'title', 'Book title is required.');
+        validationErrors.push('Book title is required.');
+    }
+    if (publicationYear === null || Number.isNaN(publicationYear)) {
+        setFieldError(dom.formBook, 'publicationYear', 'Publication year is required.');
+        validationErrors.push('Publication year is required.');
+    }
+    if (authorIds.length === 0) {
+        setFieldError(dom.formBook, 'authorIds', 'Please select at least one author.');
+        validationErrors.push('Please select at least one author.');
+    }
+    if (themeIds.length === 0) {
+        setFieldError(dom.formBook, 'themeIds', 'Please select at least one theme.');
+        validationErrors.push('Please select at least one theme.');
+    }
+    if (
+        yearRead !== null &&
+        !Number.isNaN(yearRead) &&
+        publicationYear !== null &&
+        !Number.isNaN(publicationYear) &&
+        yearRead < publicationYear
+    ) {
+        const yearMsg = `Year read (${formatYear(yearRead)}) cannot be earlier than the publication year (${formatYear(publicationYear)}).`;
+        setFieldError(dom.formBook, 'yearRead', yearMsg);
+        validationErrors.push(yearMsg);
+    }
 
     if (validationErrors.length > 0) {
-        alert(`Validation Error:\n\n• ${validationErrors.join('\n• ')}`);
+        showNotification(`Validation Error:\n\n• ${validationErrors.join('\n• ')}`, 'error');
         return;
     }
 
@@ -578,14 +838,21 @@ async function handleBookSubmit(event) {
             await store.addBook(bookData);
         }
 
+        await Promise.all([store.getBooks(), store.getReadings()]);
+        syncStateFromStore();
+
         dom.formBook.reset();
         clearFormSelects(dom.formBook);
+        clearFormErrors(dom.formBook);
+        populateAuthorDropdown([]);
+        populateThemeDropdown([]);
         if (dom.bookId) dom.bookId.value = '';
         closeModal(dom.modalBook);
 
-        await init();
+        renderBooks();
+        renderStats();
     } catch (error) {
-        handleApiError(error, 'Failed to save book.');
+        handleApiError(error, dom.formBook, 'Failed to save book.');
     }
 }
 
@@ -594,7 +861,10 @@ async function handleDeleteBook(bookId) {
 
     try {
         await store.deleteBook(bookId);
-        await init();
+        syncStateFromStore();
+
+        renderBooks();
+        renderStats();
     } catch (error) {
         handleApiError(error, 'Failed to delete book.');
     }
@@ -612,6 +882,7 @@ function openReadingModal(bookId) {
     if (dom.formReading) {
         dom.formReading.reset();
         clearFormSelects(dom.formReading);
+        clearFormErrors(dom.formReading);
     }
     if (dom.readingId) dom.readingId.value = '';
     if (dom.readingBookId) dom.readingBookId.value = bookId;
@@ -633,9 +904,10 @@ function renderBookReadingsHistory(bookId) {
         return;
     }
 
-    dom.modalReadingsList.innerHTML = readings.map(reading => {
-        const formattedYearRead = formatYear(reading.yearRead);
-        return `
+    dom.modalReadingsList.innerHTML = readings
+        .map(reading => {
+            const formattedYearRead = formatYear(reading.yearRead);
+            return `
             <div class="reading-history-item" data-id="${reading.id}">
                 <div class="reading-item-header">
                     <span class="status-pill ${getStatusClass(reading.status)}">${getStatusLabel(reading.status)}</span>
@@ -645,23 +917,50 @@ function renderBookReadingsHistory(bookId) {
                 ${reading.grade !== null && reading.grade !== undefined ? `<p><strong>Grade:</strong> ${reading.grade} / 10</p>` : ''}
             </div>
         `;
-    }).join('');
+        })
+        .join('');
 }
 
 async function handleReadingSubmit(event) {
     event.preventDefault();
+    clearFormErrors(dom.formReading);
 
+    const readingId = dom.readingId?.value ? Number(dom.readingId.value) : null;
     const bookId = dom.readingBookId?.value ? Number(dom.readingBookId.value) : null;
     const status = dom.readingStatus?.value || '';
     const yearRead = dom.readingYear?.value !== '' ? Number(dom.readingYear.value) : null;
     const grade = dom.readingGrade?.value !== '' ? Number(dom.readingGrade.value) : null;
 
-    if (!bookId || !status) {
-        alert('Validation Error:\nBook ID and reading status are required.');
+    const validationErrors = [];
+    if (!bookId) {
+        validationErrors.push('Book ID is required.');
+    }
+    if (!status) {
+        setFieldError(dom.formReading, 'status', 'Reading status is required.');
+        validationErrors.push('Reading status is required.');
+    }
+
+    const book = appState.books.find(b => Number(b.id) === Number(bookId));
+    if (
+        yearRead !== null &&
+        !Number.isNaN(yearRead) &&
+        book &&
+        book.publicationYear !== null &&
+        book.publicationYear !== undefined &&
+        yearRead < Number(book.publicationYear)
+    ) {
+        const yearErrorMessage = `Year read (${formatYear(yearRead)}) must be greater than or equal to the book's publication year (${formatYear(book.publicationYear)}).`;
+        setFieldError(dom.formReading, 'yearRead', yearErrorMessage);
+        validationErrors.push(yearErrorMessage);
+    }
+
+    if (validationErrors.length > 0) {
+        showNotification(`Validation Error:\n\n• ${validationErrors.join('\n• ')}`, 'error');
         return;
     }
 
     const readingData = {
+        ...(readingId ? { id: readingId } : {}),
         bookId,
         status,
         yearRead,
@@ -670,16 +969,20 @@ async function handleReadingSubmit(event) {
 
     try {
         await store.saveReading(readingData);
+        await Promise.all([store.getBooks(), store.getReadings()]);
+        syncStateFromStore();
 
         dom.formReading.reset();
         clearFormSelects(dom.formReading);
+        clearFormErrors(dom.formReading);
         if (dom.readingId) dom.readingId.value = '';
         if (dom.readingBookId) dom.readingBookId.value = bookId;
 
-        await init();
         renderBookReadingsHistory(bookId);
+        renderBooks();
+        renderStats();
     } catch (error) {
-        handleApiError(error, 'Failed to save reading record.');
+        handleApiError(error, dom.formReading, 'Failed to save reading record.');
     }
 }
 
@@ -688,7 +991,11 @@ async function handleDeleteReading(readingId, bookId) {
 
     try {
         await store.deleteReading(readingId);
-        await init();
+        await Promise.all([store.getBooks(), store.getReadings()]);
+        syncStateFromStore();
+
+        renderBooks();
+        renderStats();
         if (bookId && dom.modalReading?.classList.contains('active')) {
             renderBookReadingsHistory(bookId);
         }
@@ -707,12 +1014,21 @@ async function handleReset() {
 
     try {
         await store.resetData();
+        syncStateFromStore();
+
         appState.sortMode = 'az';
         if (dom.btnSort) {
             dom.btnSort.textContent = 'Sort: A-Z';
         }
-        await init();
-        alert('Database successfully reset to original seed data!');
+
+        populateCountryDropdown();
+        populateAuthorDropdown();
+        populateThemeDropdown();
+        renderBooks();
+        renderStats();
+        renderAuthorsTable();
+
+        showNotification('Database successfully reset to original seed data!', 'success');
     } catch (error) {
         handleApiError(error, 'Failed to reset database to original seed data.');
     }
@@ -724,12 +1040,7 @@ async function handleReset() {
 function bindEvents() {
     // Top Bar Buttons
     dom.btnAddBook?.addEventListener('click', openAddBookModal);
-
-    dom.btnManageAuthors?.addEventListener('click', () => {
-        renderAuthorsTable();
-        openModal(dom.modalAuthor);
-    });
-
+    dom.btnManageAuthors?.addEventListener('click', openAuthorModal);
     dom.btnSort?.addEventListener('click', toggleSortMode);
     dom.btnReset?.addEventListener('click', handleReset);
 
@@ -738,10 +1049,25 @@ function bindEvents() {
     dom.formBook?.addEventListener('submit', handleBookSubmit);
     dom.formReading?.addEventListener('submit', handleReadingSubmit);
 
+    // Tag Chips Visual Toggle (Event Delegation)
+    const setupChipToggle = container => {
+        container?.addEventListener('change', e => {
+            if (e.target.matches('input[type="checkbox"]')) {
+                const pill = e.target.closest('.chip-pill');
+                if (pill) {
+                    pill.classList.toggle('selected', e.target.checked);
+                }
+            }
+        });
+    };
+    setupChipToggle(dom.bookAuthorsChips);
+    setupChipToggle(dom.bookThemesChips);
+
     // Cancel Buttons inside Modals
     dom.btnCancelAuthorEdit?.addEventListener('click', () => {
         dom.formAuthor?.reset();
         clearFormSelects(dom.formAuthor);
+        clearFormErrors(dom.formAuthor);
         if (dom.authorId) dom.authorId.value = '';
         closeModal(dom.modalAuthor);
     });
@@ -749,6 +1075,7 @@ function bindEvents() {
     dom.btnCancelReadingEdit?.addEventListener('click', () => {
         dom.formReading?.reset();
         clearFormSelects(dom.formReading);
+        clearFormErrors(dom.formReading);
         if (dom.readingId) dom.readingId.value = '';
         closeModal(dom.modalReading);
     });
@@ -793,6 +1120,8 @@ function bindEvents() {
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
             const modal = btn.closest('dialog, .custom-modal');
+            const form = modal?.querySelector('form');
+            if (form) clearFormErrors(form);
             closeModal(modal);
         });
     });
